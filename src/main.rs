@@ -7,7 +7,7 @@ use tournament_tracker_backend::{configuration::get_configuration, run};
 async fn main() -> io::Result<()> {
     let config = get_configuration().expect("Failed to read configuration");
 
-    let connection_pool = PgPool::new(&config.database.connection_string())
+    let connection_pool = PgPool::connect(&config.database.connection_string())
         .await
         .expect("Failed to connect to database");
 

@@ -15,8 +15,8 @@ name = "app"
 [dependencies]
 actix-web = "3"
 dotenv = "0.15.0"
-sqlx = { version = "0.3", default-features = false, features = [ "runtime-tokio", "postgres", "macros", "chrono"]}
 env_logger = "0.8.1"
+sqlx = { version = "0.4.0-beta.1", default-features = false, features = [ "runtime-tokio", "macros", "postgres", "uuid", "chrono", "migrate"] }
 log = "0.4"
 serde = "1.0"
 config = "0.10"
@@ -27,6 +27,7 @@ thiserror = "1.0"
 
 [dev-dependencies]
 actix-rt = "1.1"
+uuid = {version = "0.8", features = ["v4"]}
 reqwest = {version = "0.10", features = ["json"]}
 # TODO: replace with actix_rt spawn?
 tokio = {version = "0.3", features = ["full"]}

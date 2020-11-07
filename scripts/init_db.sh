@@ -24,15 +24,14 @@ then
       -d postgres \
       postgres -N 1000
     # ^ Increased maximum number of connections for testing purposes
-fi
 
-
-
-  # Keep pinging Postgres until it's ready to accept commands
+# Keep pinging Postgres until it's ready to accept commands
 until PGPASSWORD="${DB_PASSWORD}" psql -h "localhost" -U "${DB_USER}" -p "${DB_PORT}" -d "postgres" -c '\q'; do
   >&2 echo "Postgres is still unavailable - sleeping"
-  sleep 1
+  sleep 5
 done
+fi
+
 
 >&2 echo "Postgres is up and running on port ${DB_PORT}!"
 
