@@ -3,7 +3,7 @@ use serde::Deserialize;
 #[derive(Deserialize)]
 pub struct Settings {
     pub database: DatabaseSettings,
-    pub application_port: u16
+    pub application_port: u16,
 }
 
 #[derive(Deserialize)]
@@ -21,11 +21,19 @@ impl DatabaseSettings {
             "postgres://{}:{}@{}:{}/{}",
             self.username, self.password, self.host, self.port, self.database_name
         )
-    }}
+    }
+
+    pub fn connection_string_without_db(&self) -> String {
+        format!(
+            "postgres://{}:{}@{}:{}",
+            self.username, self.password, self.host, self.port
+        )
+    }
+}
 
 pub fn get_configuration() -> Result<Settings, config::ConfigError> {
     let mut settings = Config::default();
     // read config.yaml file
     settings.merge(File::with_name("config"))?;
     settings.try_into()
-} 
+}
