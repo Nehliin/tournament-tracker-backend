@@ -1,3 +1,5 @@
+#![allow(clippy::toplevel_ref_arg)]
+
 use actix_web::{
     http::{self},
     ResponseError,
