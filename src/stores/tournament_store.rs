@@ -27,16 +27,17 @@ pub struct TournamentStore {
 }
 
 impl TournamentStore {
-    pub async fn insert_tournament(&self, tournament: Tournament) -> Result<(), ServerError> {
-        sqlx::query!(
-            "INSERT INTO tournaments (name, start_date, end_date) VALUES ($1, $2, $3)",
+    pub async fn insert_tournament(&self, tournament: Tournament) -> Result<i32, ServerError> {
+        let row = sqlx::query!(
+            "INSERT INTO tournaments (name, start_date, end_date) VALUES ($1, $2, $3)
+            RETURNING id",
             tournament.name,
             tournament.start_date,
             tournament.end_date
         )
-        .execute(&self.pool)
+        .fetch_one(&self.pool)
         .await?;
-        Ok(())
+        Ok(row.id)
     }
 
     pub async fn get_tournaments(&self) -> Result<Vec<Tournament>, ServerError> {
