@@ -122,7 +122,7 @@ jobs:
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
         with:
-          args: '--ignore-tests'
+          args: '-o Lcov --output-dir coverage --ignore-tests'
       - name: Upload to coveralls
         uses: coverallsapp/github-action@master
         with:
