@@ -7,7 +7,12 @@ use sqlx::{PgConnection, PgPool};
 use tokio::runtime::Runtime;
 use tournament_tracker_backend::{
     configuration::{get_configuration, DatabaseSettings},
-    stores::{player_store::Player, tournament_store::Tournament},
+    endpoints::PlayerMatchRegistrationRequest,
+    stores::match_store::Match,
+    stores::{
+        player_registration_store::PlayerMatchRegistration, player_store::Player,
+        tournament_store::Tournament,
+    },
 };
 use uuid::Uuid;
 
@@ -188,3 +193,126 @@ async fn should_404_on_missing_player() {
 
     assert_eq!(response.status(), StatusCode::from_u16(404).unwrap());
 }
+
+#[actix_rt::test]
+async fn should_fail_invalid_player_registration() {
+    let server_addr = spawn_server().await;
+
+    let client = reqwest::Client::new();
+
+    let player_registration_request = PlayerMatchRegistrationRequest {
+        player_id: 0,
+        registered_by: "Svante".to_string(),
+    };
+
+    let response = client
+        .post(&format!("{}/matches/0/register/player", &server_addr))
+        .json(&player_registration_request)
+        .send()
+        .await
+        .expect("Request failed");
+
+    assert_eq!(response.status(), StatusCode::from_u16(500).unwrap());
+}
+
+#[actix_rt::test]
+async fn should_register_player() {
+    let server_addr = spawn_server().await;
+
+    let client = reqwest::Client::new();
+
+    let start_date = Local::today().naive_local();
+
+    let tournament = Tournament {
+        id: 0, // doesn't matter
+        name: "Södertälje open".into(),
+        start_date,
+        end_date: start_date + Duration::days(1),
+    };
+    // insert tournament
+    let response = client
+        .post(&format!("{}/tournaments", &server_addr))
+        .json(&tournament)
+        .send()
+        .await
+        .expect("Request failed");
+
+    assert!(response.status().is_success());
+    let tournament_id = response.text().await.unwrap();
+
+    let player = Player {
+        id: 0,
+        name: "Göte svensson".into(),
+    };
+
+    // insert player 1
+    let response = client
+        .post(&format!("{}/players", &server_addr))
+        .json(&player)
+        .send()
+        .await
+        .expect("Request failed");
+
+    assert!(response.status().is_success());
+
+    let player = Player {
+        id: 1,
+        name: "Sture svensson".into(),
+    };
+
+    // insert player 2
+    let response = client
+        .post(&format!("{}/players", &server_addr))
+        .json(&player)
+        .send()
+        .await
+        .expect("Request failed");
+
+    assert!(response.status().is_success());
+
+    // insert match
+    let match_data = Match {
+        id: 0, // not important
+        player_one: 0,
+        player_two: 1,
+        tournament_id: tournament_id.parse::<i32>().unwrap(),
+        class: "p96".to_string(),
+        start_time: Local::now().naive_local() + Duration::hours(2),
+    };
+
+    let response = client
+        .post(&format!("{}/matches", &server_addr))
+        .json(&match_data)
+        .send()
+        .await
+        .expect("Request failed");
+
+    assert!(dbg!(&response).status().is_success());
+    let match_id = response.text().await.unwrap();
+
+    let player_registration_request = PlayerMatchRegistrationRequest {
+        player_id: 1,
+        registered_by: "Svante".to_string(),
+    };
+
+    // register player 2
+    let response = client
+        .post(&format!(
+            "{}/matches/{}/register/player",
+            &server_addr, match_id
+        ))
+        .json(&player_registration_request)
+        .send()
+        .await
+        .expect("Request failed");
+
+    assert!(response.status().is_success());
+
+    let actual = response.json::<PlayerMatchRegistration>().await.unwrap();
+
+    assert_eq!(1, actual.player_id);
+    assert_eq!(match_id.parse::<i64>().unwrap(), actual.match_id);
+    assert_eq!("Svante".to_string(), actual.registerd_by);
+}
+
+// TODO: add more match insertion tests
