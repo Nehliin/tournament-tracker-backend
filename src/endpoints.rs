@@ -70,10 +70,13 @@ pub async fn get_player(
 // Match endpoints
 
 #[post("/matches")]
-pub async fn insert_match(match_data: Json<Match>, db: Data<MatchStore>) -> Result<impl Responder, ServerError> {
+pub async fn insert_match(
+    match_data: Json<Match>,
+    db: Data<MatchStore>,
+) -> Result<impl Responder, ServerError> {
     if match_data.start_time < Local::now().naive_local() {
         println!("invalid");
-        Err(ServerError::InvalidStartTime) 
+        Err(ServerError::InvalidStartTime)
     } else {
         let id = db.insert_match(match_data.into_inner()).await?;
         Ok(HttpResponse::Ok().body(id.to_string()))
