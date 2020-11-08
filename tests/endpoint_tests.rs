@@ -1,12 +1,13 @@
 use std::net::TcpListener;
 
 use chrono::{Duration, Local};
+use reqwest::StatusCode;
 use sqlx::{Connection, Executor};
 use sqlx::{PgConnection, PgPool};
 use tokio::runtime::Runtime;
 use tournament_tracker_backend::{
     configuration::{get_configuration, DatabaseSettings},
-    stores::tournament_store::Tournament,
+    stores::{player_store::Player, tournament_store::Tournament},
 };
 use uuid::Uuid;
 
@@ -138,4 +139,52 @@ async fn get_tournament_test() {
     };
 
     assert_eq!(tournament_list[0], tournament);
+}
+
+#[actix_rt::test]
+async fn insert_and_get_player_test() {
+    let server_addr = spawn_server().await;
+
+    let client = reqwest::Client::new();
+
+    let player = Player {
+        id: 3,
+        name: "Göte svensson".into(),
+    };
+
+    let response = client
+        .post(&format!("{}/players", &server_addr))
+        .json(&player)
+        .send()
+        .await
+        .expect("Request failed");
+
+    assert!(response.status().is_success());
+
+    let response = client
+        .get(&format!("{}/players/3", &server_addr))
+        .send()
+        .await
+        .expect("Request failed");
+
+    assert!(response.status().is_success());
+    assert_eq!(
+        player,
+        response.json::<Player>().await.expect("Response body")
+    );
+}
+
+#[actix_rt::test]
+async fn should_404_on_missing_player() {
+    let server_addr = spawn_server().await;
+
+    let client = reqwest::Client::new();
+
+    let response = client
+        .get(&format!("{}/players/3", &server_addr))
+        .send()
+        .await
+        .expect("Request failed");
+
+    assert_eq!(response.status(), StatusCode::from_u16(404).unwrap());
 }
