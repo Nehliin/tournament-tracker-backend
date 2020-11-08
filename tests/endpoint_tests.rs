@@ -287,7 +287,7 @@ async fn should_register_player() {
         .await
         .expect("Request failed");
 
-    assert!(dbg!(&response).status().is_success());
+    assert!(response.status().is_success());
     let match_id = response.text().await.unwrap();
 
     let player_registration_request = PlayerMatchRegistrationRequest {
