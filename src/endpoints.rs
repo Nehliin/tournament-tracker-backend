@@ -75,8 +75,9 @@ pub async fn insert_match(
     db: Data<MatchStore>,
 ) -> Result<impl Responder, ServerError> {
     if match_data.start_time < Local::now().naive_local() {
-        println!("invalid");
         Err(ServerError::InvalidStartTime)
+    } else if match_data.player_one == match_data.player_two {
+        Err(ServerError::InvalidRooster)
     } else {
         let id = db.insert_match(match_data.into_inner()).await?;
         Ok(HttpResponse::Ok().body(id.to_string()))

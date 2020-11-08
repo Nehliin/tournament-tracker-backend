@@ -25,6 +25,8 @@ pub enum ServerError {
     InvalidDate,
     #[error("Invalid start time")]
     InvalidStartTime,
+    #[error("Invalid rooster, two different players are needed")]
+    InvalidRooster,
     #[error("Internal Database error")]
     InternalDataBaseError(#[from] sqlx::Error),
 }
@@ -32,9 +34,9 @@ pub enum ServerError {
 impl ResponseError for ServerError {
     fn status_code(&self) -> http::StatusCode {
         match &self {
-            ServerError::InvalidDate | ServerError::InvalidStartTime => {
-                http::StatusCode::BAD_REQUEST
-            }
+            ServerError::InvalidDate
+            | ServerError::InvalidRooster
+            | ServerError::InvalidStartTime => http::StatusCode::BAD_REQUEST,
             // Todo: log the actual error
             ServerError::InternalDataBaseError(_) => http::StatusCode::INTERNAL_SERVER_ERROR,
         }
