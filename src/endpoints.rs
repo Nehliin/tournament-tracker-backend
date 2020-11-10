@@ -96,7 +96,7 @@ pub async fn register_player(
     match_id: Path<i64>,
     mut payload: Json<PlayerMatchRegistrationRequest>,
     player_registration_store: Data<PlayerRegistrationStore>,
-    match_store: Data<MatchStore>
+    match_store: Data<MatchStore>,
 ) -> Result<impl Responder, ServerError> {
     let match_data = match_store.get_match(*match_id).await?;
 
@@ -104,10 +104,12 @@ pub async fn register_player(
         return Err(ServerError::InvalidPlayerRegistration);
     }
 
-    let previous_registration = player_registration_store.get_player_registration(payload.player_id, *match_id).await?; 
+    let previous_registration = player_registration_store
+        .get_player_registration(payload.player_id, *match_id)
+        .await?;
     if previous_registration.is_some() {
         return Err(ServerError::PlayerAlreadyReigstered);
-    } 
+    }
 
     let registered_by = std::mem::take(&mut payload.registered_by);
     let match_registration = player_registration_store

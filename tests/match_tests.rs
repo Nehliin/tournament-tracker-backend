@@ -164,7 +164,6 @@ async fn should_not_register_invalid_player() {
         .await;
     assert!(response.status().is_client_error());
 
-
     // Try to register player twice
     let player_registration = PlayerMatchRegistrationRequest {
         player_id: player_one,
@@ -184,5 +183,4 @@ async fn should_not_register_invalid_player() {
         .register_player(match_id.parse::<i64>().unwrap(), &player_registration)
         .await;
     assert!(response.status().is_client_error())
-
 }
