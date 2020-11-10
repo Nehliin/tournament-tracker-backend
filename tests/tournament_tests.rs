@@ -39,9 +39,7 @@ async fn invalid_date_test() {
 
     let response = client.insert_tournament(&tournament).await;
     assert!(!response.status().is_success());
-    assert_eq!(response.status(), StatusCode::from_u16(403).unwrap());
-    // id should not be part of the response
-    assert!(response.text().await.unwrap().is_empty());
+    assert_eq!(response.status(), StatusCode::from_u16(400).unwrap());
 }
 
 #[actix_rt::test]
