@@ -53,9 +53,7 @@ pub fn get_configuration() -> Result<Settings, config::ConfigError> {
     // settings.merge(Environment::with_prefix("app"))?;
 
     // Layer on the environment-specific values.
-    settings.merge(
-        config::File::from(config_dir.join(env)).required(true),
-    )?;
+    settings.merge(config::File::from(config_dir.join(env)).required(true))?;
 
     settings.try_into()
 }

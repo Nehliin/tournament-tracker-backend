@@ -13,7 +13,10 @@ async fn main() -> io::Result<()> {
         .await
         .expect("Failed to connect to database");
     println!("config: {:?}", config);
-    let listener = TcpListener::bind(format!("{}:{}", config.application.host, config.application.port))
-        .expect("Failed to bind address");
+    let listener = TcpListener::bind(format!(
+        "{}:{}",
+        config.application.host, config.application.port
+    ))
+    .expect("Failed to bind address");
     run(listener, connection_pool)?.await
 }
