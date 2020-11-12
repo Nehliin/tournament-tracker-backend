@@ -1,0 +1,92 @@
+{
+  "db": "PostgreSQL",
+  "140acbc4914c296d3ac2a3d502462cd73e644f40109bc4ab32b8a17c39763cdc": {
+    "query": "INSERT INTO tournaments (name, start_date, end_date) VALUES ($1, $2, $3)",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Date",
+          "Date"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "484a8f8a8f686c7e609e0e6b832a4bafcf7fdebf9912de5b90d9b54fd5daed8c": {
+    "query": "INSERT INTO players (id, name) VALUES ($1, $2)",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Text"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "4bc0b809793a7c6cb255672052cb221dddbf6732180bec4430d5a898260fef9b": {
+    "query": "SELECT * FROM players WHERE id = $1",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8"
+        ]
+      },
+      "nullable": [
+        false,
+        false
+      ]
+    }
+  },
+  "eef81e5f97b4472776cd2c9cfb1bed90cf8bf77fa5203d6beda16bfbe322ef1d": {
+    "query": "SELECT * FROM tournaments WHERE end_date >= CURRENT_DATE",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 1,
+          "name": "name",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "start_date",
+          "type_info": "Date"
+        },
+        {
+          "ordinal": 3,
+          "name": "end_date",
+          "type_info": "Date"
+        }
+      ],
+      "parameters": {
+        "Left": []
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  }
+}
