@@ -36,6 +36,8 @@ RUN apt-get update -y \
 # to our runtime environment
 COPY --from=builder /app/target/release/app app
 COPY configuration configuration
+# Set log level
+ENV RUST_LOG sqlx=warn,info
 ENV ENVIROMENT prod
 
 ENTRYPOINT [ "./app"]

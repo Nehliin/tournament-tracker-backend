@@ -3,6 +3,7 @@
 use chrono::{Local, NaiveDateTime};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use tracing::error;
 
 #[derive(Debug, sqlx::FromRow, Deserialize, Serialize)]
 pub struct PlayerMatchRegistration {
@@ -17,6 +18,7 @@ pub struct PlayerRegistrationStore {
 }
 
 impl PlayerRegistrationStore {
+    #[tracing::instrument(name = "Inserting player registration", skip(self))]
     pub async fn insert_player_registration(
         &self,
         player_id: i64,
@@ -34,11 +36,16 @@ impl PlayerRegistrationStore {
             match_registration.match_id,
             match_registration.time_registerd,
             match_registration.registerd_by,
-        ).execute(&self.pool).await?;
+        ).execute(&self.pool).await
+        .map_err(|err| {
+            error!("Failed to register player {}", err);
+            err
+        })?;
 
         Ok(match_registration)
     }
 
+    #[tracing::instrument(name = "Fetching player registration", skip(self))]
     pub async fn get_player_registration(
         &self,
         player_id: i64,
@@ -51,6 +58,10 @@ impl PlayerRegistrationStore {
             match_id,
         )
         .fetch_optional(&self.pool)
-        .await?)
+        .await
+        .map_err(|err| {
+            error!("Failed get player registration {}", err);
+            err
+        })?)
     }
 }

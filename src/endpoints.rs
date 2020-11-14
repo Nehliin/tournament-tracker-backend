@@ -22,7 +22,7 @@ pub async fn health_check() -> HttpResponse {
 }
 
 // Tournament endpoints
-
+#[tracing::instrument(name = "Insert tournament", skip(db))]
 #[post("/tournaments")]
 pub async fn insert_tournament(
     tournament: Json<Tournament>,
@@ -38,6 +38,7 @@ pub async fn insert_tournament(
     Ok(HttpResponse::Ok().body(id.to_string()))
 }
 
+#[tracing::instrument(name = "Get tournaments", skip(db))]
 #[get("/tournaments")]
 pub async fn get_tournaments(db: Data<TournamentStore>) -> Result<impl Responder, ServerError> {
     let tournaments = db.get_tournaments().await?;
@@ -45,7 +46,7 @@ pub async fn get_tournaments(db: Data<TournamentStore>) -> Result<impl Responder
 }
 
 // Player endpoints
-
+#[tracing::instrument(name = "Insert player", skip(db))]
 #[post("/players")]
 pub async fn insert_player(
     player: Json<Player>,
@@ -55,6 +56,7 @@ pub async fn insert_player(
     Ok(HttpResponse::Ok())
 }
 
+#[tracing::instrument(name = "Get player", skip(db))]
 #[get("/players/{id}")]
 pub async fn get_player(
     id: Path<i64>,
@@ -68,7 +70,7 @@ pub async fn get_player(
 }
 
 // Match endpoints
-
+#[tracing::instrument(name = "Insert match", skip(db))]
 #[post("/matches")]
 pub async fn insert_match(
     match_data: Json<Match>,
@@ -91,6 +93,10 @@ pub struct PlayerMatchRegistrationRequest {
 }
 
 // TODO: This should probably take a form instead
+#[tracing::instrument(
+    name = "Register player to match",
+    skip(match_store, player_registration_store)
+)]
 #[post("/matches/{match_id}/register/player")]
 pub async fn register_player(
     match_id: Path<i64>,

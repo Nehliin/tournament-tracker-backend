@@ -14,10 +14,13 @@ name = "app"
 
 [dependencies]
 actix-web = "3"
-dotenv = "0.15.0"
-env_logger = "0.8.1"
 sqlx = { version = "0.4.1", default-features = false, features = ["runtime-actix-native-tls", "macros", "postgres", "offline", "chrono", "migrate"] }
-log = "0.4"
+tracing = "0.1"
+tracing-futures = "0.2.4"
+tracing-subscriber = { version = "0.2.12", features = ["registry", "env-filter"] }
+tracing-bunyan-formatter = "0.1"
+tracing-actix-web = "0.2"
+tracing-log = "0.1"
 serde = "1.0"
 config = "0.10"
 chrono = {version = "0.4", features = ["serde"]}
@@ -26,6 +29,7 @@ thiserror = "1.0"
 
 [dev-dependencies]
 actix-rt = "1.1"
+lazy_static = "1.4"
 uuid = {version = "0.8", features = ["v4"]}
 reqwest = {version = "0.10", features = ["json"]}
 # TODO: replace with actix_rt spawn?

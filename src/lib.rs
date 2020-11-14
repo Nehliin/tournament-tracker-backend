@@ -1,5 +1,5 @@
+use actix_web::App;
 use actix_web::{dev::Server, http, web::Data, HttpServer, ResponseError};
-use actix_web::{middleware::Logger, App};
 use endpoints::*;
 use sqlx::PgPool;
 use std::io;
@@ -9,6 +9,11 @@ use stores::{
     player_store::PlayerStore, tournament_store::TournamentStore,
 };
 use thiserror::Error;
+use tracing::{subscriber::set_global_default, Subscriber};
+use tracing_actix_web::TracingLogger;
+use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
+use tracing_log::LogTracer;
+use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, EnvFilter, Registry};
 
 pub mod configuration;
 pub mod endpoints;
@@ -43,10 +48,28 @@ impl ResponseError for ServerError {
             | ServerError::InvalidStartTime
             | ServerError::InvalidPlayerRegistration
             | ServerError::PlayerAlreadyReigstered => http::StatusCode::BAD_REQUEST,
-            // Todo: log the actual error
             ServerError::InternalDataBaseError(_) => http::StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
+}
+
+pub fn get_trace_subscriber(
+    name: String,
+    fallback_filter: String,
+) -> impl Subscriber + Send + Sync {
+    let env_filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(fallback_filter));
+    let formatting_layer = BunyanFormattingLayer::new(name, std::io::stdout);
+
+    Registry::default()
+        .with(env_filter)
+        .with(JsonStorageLayer)
+        .with(formatting_layer)
+}
+
+pub fn init_subscriber(subscriber: impl Subscriber + Send + Sync) {
+    LogTracer::init().expect("Failed to set logger");
+    set_global_default(subscriber).expect("Failed to set subscriber");
 }
 
 pub fn run(listener: TcpListener, db_pool: PgPool) -> io::Result<Server> {
@@ -67,7 +90,7 @@ pub fn run(listener: TcpListener, db_pool: PgPool) -> io::Result<Server> {
             .app_data(tournament_store.clone())
             .app_data(player_store.clone())
             .app_data(player_registration_store.clone())
-            .wrap(Logger::default())
+            .wrap(TracingLogger)
             .service(insert_tournament)
             .service(get_tournaments)
             .service(health_check)

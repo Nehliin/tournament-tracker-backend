@@ -7,6 +7,7 @@ use tokio::runtime::Runtime;
 use tournament_tracker_backend::{
     configuration::{get_configuration, DatabaseSettings},
     endpoints::PlayerMatchRegistrationRequest,
+    get_trace_subscriber, init_subscriber,
     stores::match_store::Match,
     stores::{player_store::Player, tournament_store::Tournament},
 };
@@ -78,7 +79,16 @@ impl TournamentTrackerClient {
     }
 }
 
+lazy_static::lazy_static! {
+    static ref TRACING: () = {
+        let subscriber = get_trace_subscriber("Test server".into(), "debug".into());
+        init_subscriber(subscriber);
+    };
+}
+
 pub async fn spawn_server() -> TournamentTrackerClient {
+    lazy_static::initialize(&TRACING);
+
     let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind address");
     let port = listener.local_addr().unwrap().port();
 
