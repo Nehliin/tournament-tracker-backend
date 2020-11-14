@@ -35,15 +35,12 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-      - name: Migrate database
-        run: |
-          sudo apt-get install libpq-dev -y
-          cargo install --version=0.2.0 sqlx-cli --no-default-features --features postgres
-          SKIP_DOCKER=true ./scripts/init_db.sh
-      - name: Check sqlx-data.json metadata file
-        run: cargo sqlx prepare --check -- --bin app
-
+      # Re-enable this when: https://github.com/launchbadge/sqlx/issues/788 is fixed
+      #- name: Check sqlx-data.json metadata file
+      #  run: cargo sqlx prepare --check -- --bin app
       - uses: actions-rs/cargo@v1
+        env: 
+          SQLX_OFFLINE: true
         with:
           command: test
 
@@ -66,6 +63,8 @@ jobs:
   clippy:
     name: Clippy
     runs-on: ubuntu-latest
+    env: 
+      SQLX_OFFLINE: true
     services:
       postgres:
         image: postgres
@@ -87,11 +86,6 @@ jobs:
           toolchain: stable
           override: true
       - run: rustup component add clippy
-      - name: Migrate database
-        run: |
-          sudo apt-get install libpq-dev -y
-          cargo install --version=0.2.0 sqlx-cli --no-default-features --features postgres
-          SKIP_DOCKER=true ./scripts/init_db.sh
       - uses: actions-rs/cargo@v1
         with:
           command: clippy
@@ -122,13 +116,9 @@ jobs:
         with:
           toolchain: stable
           override: true
-
-      - name: Migrate database
-        run: |
-          sudo apt-get install libpq-dev -y
-          cargo install --version=0.2.0 sqlx-cli --no-default-features --features postgres
-          SKIP_DOCKER=true ./scripts/init_db.sh
       - name: Run cargo-tarpaulin
+        env:
+          SQLX_OFFLINE: true
         uses: actions-rs/tarpaulin@v0.1
         with:
           args: '-o Lcov --output-dir coverage --ignore-tests'
