@@ -1,10 +1,14 @@
-use std::{io, net::TcpListener};
-
 use sqlx::postgres::PgPoolOptions;
-use tournament_tracker_backend::{configuration::get_configuration, run};
+use std::{io, net::TcpListener};
+use tournament_tracker_backend::{
+    configuration::get_configuration, get_trace_subscriber, init_subscriber, run,
+};
 
 #[actix_web::main]
 async fn main() -> io::Result<()> {
+    let subscriber = get_trace_subscriber("tournament-tracker".into(), "info".into());
+    init_subscriber(subscriber);
+
     let config = get_configuration().expect("Failed to read configuration");
 
     let connection_pool = PgPoolOptions::new()
@@ -12,7 +16,7 @@ async fn main() -> io::Result<()> {
         .connect(&config.database.connection_string())
         .await
         .expect("Failed to connect to database");
-    println!("config: {:?}", config);
+
     let listener = TcpListener::bind(format!(
         "{}:{}",
         config.application.host, config.application.port
