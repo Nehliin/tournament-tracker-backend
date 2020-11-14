@@ -35,9 +35,11 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-      # Re-enable this when: https://github.com/launchbadge/sqlx/issues/788 is fixed
-      #- name: Check sqlx-data.json metadata file
-      #  run: cargo sqlx prepare --check -- --bin app
+      # Remove this when: https://github.com/launchbadge/sqlx/issues/788 is fixed
+      - name: Clean target folder
+        run: cargo clean
+      - name: Check sqlx-data.json metadata file
+        run: cargo sqlx prepare --check -- --bin app
       - uses: actions-rs/cargo@v1
         env: 
           SQLX_OFFLINE: true
@@ -63,8 +65,6 @@ jobs:
   clippy:
     name: Clippy
     runs-on: ubuntu-latest
-    env: 
-      SQLX_OFFLINE: true
     services:
       postgres:
         image: postgres
@@ -87,6 +87,8 @@ jobs:
           override: true
       - run: rustup component add clippy
       - uses: actions-rs/cargo@v1
+        env: 
+          SQLX_OFFLINE: true
         with:
           command: clippy
           args: -- -D warnings
