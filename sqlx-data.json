@@ -1,17 +1,92 @@
 {
   "db": "PostgreSQL",
-  "140acbc4914c296d3ac2a3d502462cd73e644f40109bc4ab32b8a17c39763cdc": {
-    "query": "INSERT INTO tournaments (name, start_date, end_date) VALUES ($1, $2, $3)",
+  "16116eb9165009fa12db50a74f0cb37f07075913c48bbad9b52825d74594b007": {
+    "query": "SELECT * FROM matches WHERE id = $1",
     "describe": {
-      "columns": [],
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "player_one",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 2,
+          "name": "player_two",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 3,
+          "name": "tournament_id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 4,
+          "name": "class",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 5,
+          "name": "start_time",
+          "type_info": "Timestamp"
+        }
+      ],
       "parameters": {
         "Left": [
-          "Text",
-          "Date",
-          "Date"
+          "Int8"
         ]
       },
-      "nullable": []
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "20b04d3c1081028489fdb0c365873a5d5e1a2efe67b4c22a1a20a0f2f7671b1c": {
+    "query": "SELECT * FROM register WHERE player_id = $1 AND match_id = $2",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "player_id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "match_id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 2,
+          "name": "time_registerd",
+          "type_info": "Timestamp"
+        },
+        {
+          "ordinal": 3,
+          "name": "registerd_by",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Int8"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ]
     }
   },
   "484a8f8a8f686c7e609e0e6b832a4bafcf7fdebf9912de5b90d9b54fd5daed8c": {
@@ -51,6 +126,67 @@
         false,
         false
       ]
+    }
+  },
+  "929da725c935d95a4b85ea67fc4bb5bcb7023e261d2a490bc06354e13627e207": {
+    "query": "INSERT INTO matches (tournament_id, player_one, player_two, class, start_time) \n                    VALUES ($1,$2,$3,$4,$5)\n                    RETURNING id",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Int8",
+          "Int8",
+          "Text",
+          "Timestamp"
+        ]
+      },
+      "nullable": [
+        false
+      ]
+    }
+  },
+  "d84b56871d984fb46684c72083338cf6b2b918798467f501cb219d4127b278a9": {
+    "query": "INSERT INTO tournaments (name, start_date, end_date) VALUES ($1, $2, $3)\n            RETURNING id",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int4"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Date",
+          "Date"
+        ]
+      },
+      "nullable": [
+        false
+      ]
+    }
+  },
+  "e69c2d199e74c71fc81d57565c1949ee63ec0664040bfd5fc69f19d034d92e92": {
+    "query": "INSERT INTO register (player_id, match_id, time_registerd, registerd_by) VALUES ($1, $2, $3, $4)",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Int8",
+          "Timestamp",
+          "Text"
+        ]
+      },
+      "nullable": []
     }
   },
   "eef81e5f97b4472776cd2c9cfb1bed90cf8bf77fa5203d6beda16bfbe322ef1d": {
