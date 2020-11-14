@@ -24,6 +24,7 @@ then
       -d postgres \
       postgres -N 1000
     # ^ Increased maximum number of connections for testing purposes
+    sleep 2
 fi
 
 
