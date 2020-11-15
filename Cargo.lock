@@ -2449,6 +2449,7 @@ dependencies = [
  "actix-web",
  "chrono",
  "config",
+ "futures",
  "lazy_static",
  "reqwest",
  "serde 1.0.117",

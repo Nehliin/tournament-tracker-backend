@@ -36,6 +36,14 @@ pub enum ServerError {
     InvalidPlayerRegistration,
     #[error("Player already registered to match")]
     PlayerAlreadyReigstered,
+    #[error("Can't start match, player is missing")]
+    PlayerMissing,
+    #[error("Can't start match, match already started")]
+    MatchAlreadyStarted,
+    #[error("Player can't be found")]
+    PlayerNotFound,
+    #[error("Match can't be found")]
+    MatchNotFound,
     #[error("Internal Database error")]
     InternalDataBaseError(#[from] sqlx::Error),
 }
@@ -44,10 +52,12 @@ impl ResponseError for ServerError {
     fn status_code(&self) -> http::StatusCode {
         match &self {
             ServerError::InvalidDate
+            | ServerError::PlayerMissing
             | ServerError::InvalidRooster
             | ServerError::InvalidStartTime
             | ServerError::InvalidPlayerRegistration
             | ServerError::PlayerAlreadyReigstered => http::StatusCode::BAD_REQUEST,
+            ServerError::MatchNotFound | ServerError::PlayerNotFound => http::StatusCode::NOT_FOUND,
             ServerError::InternalDataBaseError(_) => http::StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -98,6 +108,7 @@ pub fn run(listener: TcpListener, db_pool: PgPool) -> io::Result<Server> {
             .service(get_player)
             .service(register_player)
             .service(insert_match)
+            .service(start_match)
     })
     .listen(listener)?
     .run();
