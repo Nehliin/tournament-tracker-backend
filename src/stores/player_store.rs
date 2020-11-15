@@ -10,6 +10,7 @@ pub struct Player {
 }
 
 // Postgres store
+#[derive(Debug)]
 pub struct PlayerStore {
     pub pool: PgPool,
 }

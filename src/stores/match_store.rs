@@ -46,9 +46,9 @@ impl MatchStore {
     }
 
     #[tracing::instrument(name = "Fetching match", skip(self))]
-    pub async fn get_match(&self, match_id: i64) -> Result<Match, sqlx::Error> {
+    pub async fn get_match(&self, match_id: i64) -> Result<Option<Match>, sqlx::Error> {
         let match_row = sqlx::query_as!(Match, "SELECT * FROM matches WHERE id = $1", match_id)
-            .fetch_one(&self.pool)
+            .fetch_optional(&self.pool)
             .await
             .map_err(|err| {
                 error!("Failed to fetch match {}", err);
