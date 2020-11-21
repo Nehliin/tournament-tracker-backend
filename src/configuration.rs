@@ -35,6 +35,9 @@ impl DatabaseSettings {
             // Try an encrypted connection, fallback to unencrypted if it fails
             PgSslMode::Prefer
         };
+
+        tracing::info!("Using Postgres SSL mode: {:?}", ssl_mode);
+
         PgConnectOptions::new()
             .host(&self.host)
             .port(self.port)
