@@ -33,7 +33,7 @@ impl DatabaseSettings {
             PgSslMode::Require
         } else {
             // Try an encrypted connection, fallback to unencrypted if it fails
-            PgSslMode::Disable
+            PgSslMode::Prefer
         };
         PgConnectOptions::new()
             .host(&self.host)
