@@ -1,8 +1,11 @@
-use config::{Config, File};
+use config::{Config, Environment, File};
 use serde::Deserialize;
+use serde_aux::field_attributes::deserialize_number_from_string;
+use sqlx::postgres::{PgConnectOptions, PgSslMode};
 
 #[derive(Debug, Deserialize)]
 pub struct ApplicationSettings {
+    #[serde(deserialize_with = "deserialize_number_from_string")]
     pub port: u16,
     pub host: String,
 }
@@ -17,24 +20,34 @@ pub struct Settings {
 pub struct DatabaseSettings {
     pub username: String,
     pub password: String,
+    #[serde(deserialize_with = "deserialize_number_from_string")]
     pub port: u16,
     pub host: String,
     pub database_name: String,
+    pub require_ssl: bool,
 }
 
 impl DatabaseSettings {
-    pub fn connection_string(&self) -> String {
-        format!(
-            "postgres://{}:{}@{}:{}/{}",
-            self.username, self.password, self.host, self.port, self.database_name
-        )
+    pub fn without_db(&self) -> PgConnectOptions {
+        let ssl_mode = if self.require_ssl {
+            PgSslMode::Require
+        } else {
+            // Try an encrypted connection, fallback to unencrypted if it fails
+            PgSslMode::Prefer
+        };
+
+        tracing::info!("Using Postgres SSL mode: {:?}", ssl_mode);
+
+        PgConnectOptions::new()
+            .host(&self.host)
+            .port(self.port)
+            .username(&self.username)
+            .password(&self.password)
+            .ssl_mode(ssl_mode)
     }
 
-    pub fn connection_string_without_db(&self) -> String {
-        format!(
-            "postgres://{}:{}@{}:{}",
-            self.username, self.password, self.host, self.port
-        )
+    pub fn with_db(&self) -> PgConnectOptions {
+        self.without_db().database(&self.database_name)
     }
 }
 
@@ -49,11 +62,13 @@ pub fn get_configuration() -> Result<Settings, config::ConfigError> {
 
     // used to read ENVIROMENT variable, defaults to local
     let env = std::env::var("ENVIROMENT").unwrap_or_else(|_| "local".into());
-    // TODO: merge this to set db settings in production
-    // settings.merge(Environment::with_prefix("app"))?;
 
     // Layer on the environment-specific values.
     settings.merge(config::File::from(config_dir.join(env)).required(true))?;
+
+    // Allows ENV variables to override the yaml settings
+    // ex APP_APPLICATION__PORT=1337
+    settings.merge(Environment::with_prefix("app").separator("__"))?;
 
     settings.try_into()
 }

@@ -13,9 +13,14 @@ async fn main() -> io::Result<()> {
 
     let connection_pool = PgPoolOptions::new()
         .connect_timeout(std::time::Duration::from_secs(5))
-        .connect(&config.database.connection_string())
+        .connect_with(config.database.with_db())
         .await
         .expect("Failed to connect to database");
+
+    sqlx::migrate!("./migrations")
+        .run(&connection_pool)
+        .await
+        .expect("Failed to migrate the database");
 
     let listener = TcpListener::bind(format!(
         "{}:{}",
