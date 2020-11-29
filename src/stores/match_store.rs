@@ -22,6 +22,7 @@ pub struct Match {
 pub trait MatchStore {
     async fn insert_match(&self, match_data: Match) -> Result<i64, sqlx::Error>;
     async fn get_match(&self, match_id: i64) -> Result<Option<Match>, sqlx::Error>;
+    async fn get_tournament_matches(&self, tournament_id: i32) -> Result<Vec<Match>, sqlx::Error>;
 }
 
 #[async_trait]
@@ -45,6 +46,18 @@ impl MatchStore for PgPool {
             err
         })?;
         Ok(row.id)
+    }
+
+    #[tracing::instrument(name = "Fetching tournament matches", skip(self))]
+    async fn get_tournament_matches(&self, tournament_id: i32) -> Result<Vec<Match>, sqlx::Error> {
+        let matches = sqlx::query_as!(Match, "SELECT * FROM matches WHERE tournament_id = $1", tournament_id)
+            .fetch_all(self)
+            .await
+            .map_err(|err| {
+                error!("Failed to fetch matches for tournament: {}", err);
+                err
+            })?;
+        Ok(matches)
     }
 
     #[tracing::instrument(name = "Fetching match", skip(self))]

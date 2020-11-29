@@ -98,7 +98,7 @@ async fn should_fail_to_register_to_missing_match() {
 }
 
 #[actix_rt::test]
-async fn should_register_valid_player() {
+async fn should_register_valid_player_and_start_match() {
     let client = spawn_server().await;
 
     let (tournament_id, player_one, player_two) = insert_tournament_and_players(&client).await;
@@ -132,6 +132,9 @@ async fn should_register_valid_player() {
     assert_eq!(player_one, actual.player_id);
     assert_eq!(match_id.parse::<i64>().unwrap(), actual.match_id);
     assert_eq!("Svante".to_string(), actual.registerd_by);
+
+    // ensure the match has started, the match will be #1 in the court queue
+    client
 }
 
 #[actix_rt::test]
