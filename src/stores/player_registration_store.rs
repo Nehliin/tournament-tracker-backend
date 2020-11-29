@@ -24,7 +24,7 @@ pub trait PlayerRegistrationStore {
 
     async fn get_registered_players(
         &self,
-        player_id: i64,
+        match_id: i64,
     ) -> Result<Vec<PlayerMatchRegistration>, sqlx::Error>;
 }
 
