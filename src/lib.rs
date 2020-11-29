@@ -1,13 +1,9 @@
-use actix_web::App;
-use actix_web::{dev::Server, http, web::Data, HttpServer, ResponseError};
+use actix_web::{dev::Server, http, HttpServer, ResponseError};
+use actix_web::{web::Data, App};
 use endpoints::*;
 use sqlx::PgPool;
 use std::io;
 use std::net::TcpListener;
-use stores::{
-    match_store::MatchStore, player_registration_store::PlayerRegistrationStore,
-    player_store::PlayerStore, tournament_store::TournamentStore,
-};
 use thiserror::Error;
 use tracing::{subscriber::set_global_default, Subscriber};
 use tracing_actix_web::TracingLogger;
@@ -17,6 +13,7 @@ use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, EnvFilter,
 
 pub mod configuration;
 pub mod endpoints;
+pub mod match_operations;
 pub mod stores;
 
 /*
@@ -38,12 +35,12 @@ pub enum ServerError {
     PlayerAlreadyReigstered,
     #[error("Can't start match, player is missing")]
     PlayerMissing,
-    #[error("Can't start match, match already started")]
-    MatchAlreadyStarted,
     #[error("Player can't be found")]
     PlayerNotFound,
     #[error("Match can't be found")]
     MatchNotFound,
+    #[error("Match already started")]
+    MatchAlreadyStarted,
     #[error("Internal Database error")]
     InternalDataBaseError(#[from] sqlx::Error),
 }
@@ -56,6 +53,7 @@ impl ResponseError for ServerError {
             | ServerError::InvalidRooster
             | ServerError::InvalidStartTime
             | ServerError::InvalidPlayerRegistration
+            | ServerError::MatchAlreadyStarted
             | ServerError::PlayerAlreadyReigstered => http::StatusCode::BAD_REQUEST,
             ServerError::MatchNotFound | ServerError::PlayerNotFound => http::StatusCode::NOT_FOUND,
             ServerError::InternalDataBaseError(_) => http::StatusCode::INTERNAL_SERVER_ERROR,
@@ -83,23 +81,9 @@ pub fn init_subscriber(subscriber: impl Subscriber + Send + Sync) {
 }
 
 pub fn run(listener: TcpListener, db_pool: PgPool) -> io::Result<Server> {
-    let tournament_store = Data::new(TournamentStore {
-        pool: db_pool.clone(),
-    });
-    let player_store = Data::new(PlayerStore {
-        pool: db_pool.clone(),
-    });
-    let match_store = Data::new(MatchStore {
-        pool: db_pool.clone(),
-    });
-    let player_registration_store = Data::new(PlayerRegistrationStore { pool: db_pool });
-
     let server = HttpServer::new(move || {
         App::new()
-            .app_data(match_store.clone())
-            .app_data(tournament_store.clone())
-            .app_data(player_store.clone())
-            .app_data(player_registration_store.clone())
+            .app_data(Data::new(db_pool.clone()))
             .wrap(TracingLogger)
             .service(insert_tournament)
             .service(get_tournaments)
@@ -108,7 +92,6 @@ pub fn run(listener: TcpListener, db_pool: PgPool) -> io::Result<Server> {
             .service(get_player)
             .service(register_player)
             .service(insert_match)
-            .service(start_match)
     })
     .listen(listener)?
     .run();
