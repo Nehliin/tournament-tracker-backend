@@ -108,15 +108,16 @@ pub async fn get_tournament_matches<S: MatchStore + PlayerStore>(
     let scheduled = Vec::new();
 
     for match_data in query_result.iter() {
-         match get_match_player_info(storage, match_data).await {
-             Ok(player_match_info ) => {
-                
-             }
-             Err(err) => {
-                 warn!("Player info not found for match: {}", err);
-             }
-         }
+        match get_match_player_info(storage, match_data).await {
+            Ok(player_match_info) => {
+                // TODO ADD TESTS
+            }
+            Err(err) => {
+                warn!("Player info not found for match: {}", err);
+            }
+        }
     }
+    todo!();
 }
 
 #[tracing::instrument(name = "Start match", skip(storage))]

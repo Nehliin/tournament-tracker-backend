@@ -48,11 +48,13 @@ pub async fn get_tournaments(db: Data<PgPool>) -> Result<impl Responder, ServerE
 
 #[tracing::instrument(name = "Get tournament matches", skip(db))]
 #[get("/tournaments/{id}/matches")]
-pub async fn get_tournament_matches(id: Path<i32>, db: Data<PgPool>) -> Result<impl Responder, ServerError> {
+pub async fn get_tournament_matches(
+    id: Path<i32>,
+    db: Data<PgPool>,
+) -> Result<impl Responder, ServerError> {
     let tournaments = db.get_tournaments().await?;
     Ok(HttpResponse::Ok().json(tournaments))
 }
-
 
 // Player endpoints
 #[tracing::instrument(name = "Insert player", skip(db))]

@@ -50,13 +50,17 @@ impl MatchStore for PgPool {
 
     #[tracing::instrument(name = "Fetching tournament matches", skip(self))]
     async fn get_tournament_matches(&self, tournament_id: i32) -> Result<Vec<Match>, sqlx::Error> {
-        let matches = sqlx::query_as!(Match, "SELECT * FROM matches WHERE tournament_id = $1", tournament_id)
-            .fetch_all(self)
-            .await
-            .map_err(|err| {
-                error!("Failed to fetch matches for tournament: {}", err);
-                err
-            })?;
+        let matches = sqlx::query_as!(
+            Match,
+            "SELECT * FROM matches WHERE tournament_id = $1",
+            tournament_id
+        )
+        .fetch_all(self)
+        .await
+        .map_err(|err| {
+            error!("Failed to fetch matches for tournament: {}", err);
+            err
+        })?;
         Ok(matches)
     }
 
