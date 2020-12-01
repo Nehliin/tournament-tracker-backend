@@ -45,5 +45,5 @@ async fn insert_and_get_player_test() {
 async fn should_404_on_missing_player() {
     let client = spawn_server().await;
     let response = client.get_player(3).await;
-    assert_eq!(response.status(), StatusCode::from_u16(404).unwrap());
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }

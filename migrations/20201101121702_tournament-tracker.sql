@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS matches (
         FOREIGN KEY(player_one)
             REFERENCES players(id)
             ON DELETE CASCADE,
-        FOREIGN KEY(player_one)
+        FOREIGN KEY(player_two)
             REFERENCES players(id)
             ON DELETE CASCADE
 );

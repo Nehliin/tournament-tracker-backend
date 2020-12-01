@@ -2447,8 +2447,10 @@ version = "0.1.0"
 dependencies = [
  "actix-rt",
  "actix-web",
+ "async-trait",
  "chrono",
  "config",
+ "futures",
  "lazy_static",
  "reqwest",
  "serde 1.0.117",

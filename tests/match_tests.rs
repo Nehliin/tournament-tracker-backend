@@ -62,7 +62,7 @@ async fn should_fail_to_register_match_with_invalid_rooster() {
     };
 
     let response = client.insert_match(&match_data).await;
-    assert_eq!(response.status(), StatusCode::from_u16(400).unwrap());
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 }
 
 #[actix_rt::test]
@@ -81,11 +81,11 @@ async fn should_fail_to_register_match_with_invalid_start_date() {
     };
 
     let response = client.insert_match(&match_data).await;
-    assert_eq!(response.status(), StatusCode::from_u16(400).unwrap());
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 }
 
 #[actix_rt::test]
-async fn should_fail_invalid_player_registration() {
+async fn should_fail_to_register_to_missing_match() {
     let client = spawn_server().await;
 
     let player_registration = PlayerMatchRegistrationRequest {
@@ -94,7 +94,7 @@ async fn should_fail_invalid_player_registration() {
     };
 
     let response = client.register_player(2, &player_registration).await;
-    assert_eq!(response.status(), StatusCode::from_u16(500).unwrap());
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }
 
 #[actix_rt::test]

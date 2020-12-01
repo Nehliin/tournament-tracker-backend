@@ -1,5 +1,25 @@
 {
   "db": "PostgreSQL",
+  "1526e8c7e058ca5b57bab50b11c42a2e3f22069df8d08f127fafc728a65c3dd6": {
+    "query": "SELECT match_id FROM court_queue WHERE tournament_id = $1 ORDER BY place_in_queue ASC LIMIT 1",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "match_id",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      },
+      "nullable": [
+        false
+      ]
+    }
+  },
   "16116eb9165009fa12db50a74f0cb37f07075913c48bbad9b52825d74594b007": {
     "query": "SELECT * FROM matches WHERE id = $1",
     "describe": {
@@ -50,8 +70,43 @@
       ]
     }
   },
-  "20b04d3c1081028489fdb0c365873a5d5e1a2efe67b4c22a1a20a0f2f7671b1c": {
-    "query": "SELECT * FROM register WHERE player_id = $1 AND match_id = $2",
+  "23f5f9e8eefbad33f54549f5a9fb54af11718cc24c778ba8c4f2d3d1aa6d2e18": {
+    "query": "INSERT INTO tournament_court_allocation (court_name, tournament_id, match_id) VALUES ($1, $2, $3)",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Int4",
+          "Int8"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "28750eea8f63a87095b53e4719a0755997febd39fac76953dc53c1d70ad3c2cf": {
+    "query": "SELECT court_name FROM tournament_court_allocation WHERE tournament_id = $1 AND match_id = $2",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "court_name",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Int8"
+        ]
+      },
+      "nullable": [
+        false
+      ]
+    }
+  },
+  "2ef18dbde83c0e3d7c89c147fe33af7ba7d55b94404f029d5f416fa867f20998": {
+    "query": "SELECT * FROM register WHERE match_id = $1",
     "describe": {
       "columns": [
         {
@@ -77,7 +132,6 @@
       ],
       "parameters": {
         "Left": [
-          "Int8",
           "Int8"
         ]
       },
@@ -87,6 +141,19 @@
         false,
         false
       ]
+    }
+  },
+  "3b3779ffbc354550bf068ee166b037917a45aa1ef73647dfae2abfc96cb5544e": {
+    "query": "DELETE FROM court_queue WHERE tournament_id = $1 AND match_id = $2",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Int4",
+          "Int8"
+        ]
+      },
+      "nullable": []
     }
   },
   "484a8f8a8f686c7e609e0e6b832a4bafcf7fdebf9912de5b90d9b54fd5daed8c": {
@@ -124,6 +191,40 @@
       },
       "nullable": [
         false,
+        false
+      ]
+    }
+  },
+  "4bc541a7d0afd49d8dbf685c5312da17467322a28e425fd37ba3a4c8c2f482a1": {
+    "query": "INSERT INTO court_queue (place_in_queue, match_id, tournament_id) VALUES ($1, $2, $3)",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Timestamp",
+          "Int8",
+          "Int4"
+        ]
+      },
+      "nullable": []
+    }
+  },
+  "6229b3a4b6e8fb743ac4a446cb4b16609c0b7fdd983837af0c963ee760680237": {
+    "query": "SELECT match_id FROM court_queue WHERE tournament_id = $1 ORDER BY place_in_queue ASC LIMIT 100",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "match_id",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      },
+      "nullable": [
         false
       ]
     }
@@ -167,6 +268,27 @@
           "Text",
           "Date",
           "Date"
+        ]
+      },
+      "nullable": [
+        false
+      ]
+    }
+  },
+  "df0a8eea37d23660d6d2603c612f6f8102eb28648e924f256eecfd56ef9315d8": {
+    "query": "UPDATE tournament_court_allocation SET match_id = $1 WHERE tournament_id = $2 AND match_id = NULL RETURNING court_name",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "court_name",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Int4"
         ]
       },
       "nullable": [

@@ -1,10 +1,10 @@
 #![allow(clippy::toplevel_ref_arg)]
 
+use async_trait::async_trait;
 use chrono::{Local, NaiveDateTime};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tracing::error;
-
 #[derive(Debug, sqlx::FromRow, Deserialize, Serialize)]
 pub struct PlayerMatchRegistration {
     pub player_id: i64,
@@ -13,13 +13,25 @@ pub struct PlayerMatchRegistration {
     pub registerd_by: String,
 }
 
-pub struct PlayerRegistrationStore {
-    pub pool: PgPool,
+#[async_trait]
+pub trait PlayerRegistrationStore {
+    async fn insert_player_registration(
+        &self,
+        player_id: i64,
+        match_id: i64,
+        registerd_by: String,
+    ) -> Result<PlayerMatchRegistration, sqlx::Error>;
+
+    async fn get_registered_players(
+        &self,
+        match_id: i64,
+    ) -> Result<Vec<PlayerMatchRegistration>, sqlx::Error>;
 }
 
-impl PlayerRegistrationStore {
+#[async_trait]
+impl PlayerRegistrationStore for PgPool {
     #[tracing::instrument(name = "Inserting player registration", skip(self))]
-    pub async fn insert_player_registration(
+    async fn insert_player_registration(
         &self,
         player_id: i64,
         match_id: i64,
@@ -36,7 +48,7 @@ impl PlayerRegistrationStore {
             match_registration.match_id,
             match_registration.time_registerd,
             match_registration.registerd_by,
-        ).execute(&self.pool).await
+        ).execute(self).await
         .map_err(|err| {
             error!("Failed to register player {}", err);
             err
@@ -45,22 +57,20 @@ impl PlayerRegistrationStore {
         Ok(match_registration)
     }
 
-    #[tracing::instrument(name = "Fetching player registration", skip(self))]
-    pub async fn get_player_registration(
+    #[tracing::instrument(name = "Fetching registerad players", skip(self))]
+    async fn get_registered_players(
         &self,
-        player_id: i64,
         match_id: i64,
-    ) -> Result<Option<PlayerMatchRegistration>, sqlx::Error> {
+    ) -> Result<Vec<PlayerMatchRegistration>, sqlx::Error> {
         Ok(sqlx::query_as!(
             PlayerMatchRegistration,
-            "SELECT * FROM register WHERE player_id = $1 AND match_id = $2",
-            player_id,
+            "SELECT * FROM register WHERE match_id = $1",
             match_id,
         )
-        .fetch_optional(&self.pool)
+        .fetch_all(self)
         .await
         .map_err(|err| {
-            error!("Failed get player registration {}", err);
+            error!("Failed fetchig player registrations {}", err);
             err
         })?)
     }
