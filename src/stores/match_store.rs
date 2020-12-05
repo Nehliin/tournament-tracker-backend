@@ -18,11 +18,20 @@ pub struct Match {
     pub class: String,
     pub start_time: NaiveDateTime,
 }
+
+#[derive(Debug, PartialEq, sqlx::FromRow, Deserialize, Serialize)]
+pub struct MatchResult {
+    pub match_id: i64,
+    pub result: String,
+    pub winner: i64,
+}
+
 #[async_trait]
 pub trait MatchStore {
     async fn insert_match(&self, match_data: Match) -> Result<i64, sqlx::Error>;
     async fn get_match(&self, match_id: i64) -> Result<Option<Match>, sqlx::Error>;
     async fn get_tournament_matches(&self, tournament_id: i32) -> Result<Vec<Match>, sqlx::Error>;
+    async fn get_match_result(&self, match_id: i64) -> Option<MatchResult>;
 }
 
 #[async_trait]
@@ -74,5 +83,21 @@ impl MatchStore for PgPool {
                 err
             })?;
         Ok(match_row)
+    }
+
+    #[tracing::instrument(name = "Fetching match result", skip(self))]
+    async fn get_match_result(&self, match_id: i64) -> Option<MatchResult> {
+        sqlx::query_as!(
+            MatchResult,
+            "SELECT * FROM match_result WHERE match_id = $1",
+            match_id
+        )
+        .fetch_optional(self)
+        .await
+        .map_err(|err| {
+            error!("Failed to fetch match_result {}", err);
+        })
+        .ok()
+        .flatten()
     }
 }
