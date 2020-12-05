@@ -1,3 +1,4 @@
+use crate::stores::match_store::MatchResult;
 use crate::{
     endpoints::PlayerMatchRegistrationRequest,
     stores::match_store::Match,
@@ -10,40 +11,57 @@ use crate::{
     },
     ServerError,
 };
-use chrono::{Local, NaiveDate, NaiveDateTime};
+use chrono::{Local, NaiveDateTime};
 use futures::future;
+use serde::Deserialize;
 use serde::Serialize;
-use tracing::warn;
-#[derive(Debug, Serialize, PartialEq)]
+use tracing::{error, warn};
+
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct MatchInfo {
-    id: i64,
-    class: String,
-    player_one: Player,
-    player_two: Player,
-    player_one_arrived: bool,
-    player_two_arrived: bool,
+    pub id: i64,
+    pub class: String,
+    pub player_one: Player,
+    pub player_two: Player,
+    pub player_one_arrived: bool,
+    pub player_two_arrived: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
-    court: Option<String>,
+    pub court: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    winner: Option<i64>,
+    pub winner: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    result: Option<String>,
-    start_time: NaiveDateTime,
+    pub result: Option<String>,
+    pub start_time: NaiveDateTime,
 }
 
 impl MatchInfo {
-    fn from_components(match_data: Match, player_one: Player, player_two: Player) -> Self {
+    fn without_winner(match_data: Match, player_info: PlayerMatchInfo, court: String) -> Self {
+        MatchInfo {
+            court: Some(court),
+            ..MatchInfo::without_winner_and_court(match_data, player_info)
+        }
+    }
+
+    fn without_winner_and_court(match_data: Match, player_info: PlayerMatchInfo) -> Self {
         MatchInfo {
             id: match_data.id,
             class: match_data.class,
             start_time: match_data.start_time,
-            player_one_arrived: false,
-            player_two_arrived: false,
-            player_one,
-            player_two,
+            player_one_arrived: player_info.first_player_arrived,
+            player_two_arrived: player_info.second_player_arrived,
+            player_one: player_info.first_player,
+            player_two: player_info.second_player,
             winner: None,
-            result: None,
             court: None,
+            result: None,
+        }
+    }
+
+    fn with_winner(match_data: Match, player_info: PlayerMatchInfo, result: MatchResult) -> Self {
+        MatchInfo {
+            winner: Some(result.winner),
+            result: Some(result.result),
+            ..MatchInfo::without_winner_and_court(match_data, player_info)
         }
     }
 }
@@ -88,36 +106,84 @@ where
     }
     Ok(match_registration)
 }
-
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TournamentMatchList {
-    scheduled: Vec<MatchInfo>,
-    playing: Vec<MatchInfo>,
-    finished: Vec<MatchInfo>,
+    pub scheduled: Vec<MatchInfo>,
+    pub playing: Vec<MatchInfo>,
+    pub finished: Vec<MatchInfo>,
 }
 
 #[tracing::instrument(name = "Get tournament match list", skip(storage))]
-pub async fn get_tournament_matches<S: MatchStore + PlayerStore>(
+pub async fn get_tournament_matches<S>(
     tournament_id: i32,
-    date: NaiveDate,
     storage: &S,
-) -> Result<TournamentMatchList, ServerError> {
+) -> Result<TournamentMatchList, ServerError>
+where
+    S: MatchStore + PlayerStore + PlayerRegistrationStore + CourtStore,
+{
     let query_result = storage.get_tournament_matches(tournament_id).await?;
 
     let mut finished = Vec::new();
     let mut playing = Vec::new();
-    let scheduled = Vec::new();
+    let mut scheduled = Vec::new();
 
-    for match_data in query_result.iter() {
-        match get_match_player_info(storage, match_data).await {
-            Ok(player_match_info) => {
-                // TODO ADD TESTS
+    for match_data in query_result.into_iter() {
+        let match_info_future = future::join(
+            get_match_player_info(storage, &match_data),
+            storage.get_match_result(match_data.id),
+        );
+        match match_info_future.await {
+            (Ok(player_match_info), Some(result)) => {
+                // The match is finished
+                finished.push(MatchInfo::with_winner(
+                    match_data,
+                    player_match_info,
+                    result,
+                ));
             }
-            Err(err) => {
-                warn!("Player info not found for match: {}", err);
+            (Ok(player_match_info), None) => {
+                let incomplete_match_info =
+                    MatchInfo::without_winner_and_court(match_data, player_match_info);
+                if let Some(court) = storage
+                    .get_match_court(tournament_id, incomplete_match_info.id)
+                    .await
+                {
+                    // If the match has been assigned a court but has no winner
+                    // the match is ongoing
+                    playing.push(MatchInfo {
+                        court: Some(court),
+                        ..incomplete_match_info
+                    });
+                } else {
+                    match storage
+                        .get_court_queue_placement(tournament_id, incomplete_match_info.id)
+                        .await
+                    {
+                        // If the match has not been assigned a court and doesn't have a winner it hasn't started
+                        Ok(queue_placement) => {
+                            scheduled.push(MatchInfo {
+                                court: Some(get_placement_string(queue_placement)),
+                                ..incomplete_match_info
+                            });
+                        }
+                        Err(sqlx::Error::RowNotFound) => {
+                            error!(
+                                "Match {} should be in the court queue!",
+                                incomplete_match_info.id
+                            );
+                        }
+                        _ => {}
+                    }
+                }
             }
+            (Err(err), _) => warn!("Player info not found for match: {}", err),
         }
     }
-    todo!();
+    Ok(TournamentMatchList {
+        finished,
+        playing,
+        scheduled,
+    })
 }
 
 #[tracing::instrument(name = "Start match", skip(storage))]
@@ -135,63 +201,37 @@ where
     // check if court alreay has assigned court
     if storage
         .get_match_court(match_data.tournament_id, match_data.id)
-        .await?
+        .await
         .is_some()
     {
         return Err(ServerError::MatchAlreadyStarted);
     }
 
-    // in finish match
-    // free up court
-    // pop court queue
-
     // check player registration
-    let registered_players = storage.get_registered_players(match_id).await?;
-    if registered_players.len() != 2 {
-        return Err(ServerError::PlayerMissing);
-    }
-    if let (Ok(Some(player_one)), Ok(Some(player_two))) = future::join(
-        storage.get_player(match_data.player_one),
-        storage.get_player(match_data.player_two),
-    )
-    .await
+    let player_info = get_match_player_info(storage, &match_data).await?;
+    // if no court assigned and players are present
+    // try to assign free court
+    if let Ok(assigned_court) = storage
+        .try_assign_free_court(match_data.tournament_id, match_data.id)
+        .await
     {
-        // if no court assigned and players are present
-        // try to assign free court
-        if let Some(assigned_court) = storage
-            .try_assign_free_court(match_data.tournament_id, match_data.id)
-            .await?
-        {
-            let match_info = MatchInfo {
-                court: Some(assigned_court),
-                player_one_arrived: true,
-                player_two_arrived: true,
-                start_time: Local::now().naive_local(),
-                ..MatchInfo::from_components(match_data, player_one, player_two)
-            };
-            Ok(match_info)
-        } else {
-            let court =
-                append_to_queue_and_get_placement(storage, match_data.tournament_id, match_id)
-                    .await?;
-            let match_info = MatchInfo {
-                court: Some(court),
-                player_one_arrived: true,
-                player_two_arrived: true,
-                ..MatchInfo::from_components(match_data, player_one, player_two)
-            };
-            Ok(match_info)
-        }
+        Ok(MatchInfo {
+            start_time: Local::now().naive_local(),
+            ..MatchInfo::without_winner(match_data, player_info, assigned_court)
+        })
     } else {
-        Err(ServerError::PlayerNotFound)
+        let court =
+            append_to_queue_and_get_placement(storage, match_data.tournament_id, match_id).await?;
+        Ok(MatchInfo::without_winner(match_data, player_info, court))
     }
 }
 
 // HELPERS:
+#[derive(Debug)]
 struct PlayerMatchInfo {
-    first_player_name: String,
+    first_player: Player,
     first_player_arrived: bool,
-    second_player_name: String,
+    second_player: Player,
     second_player_arrived: bool,
 }
 
@@ -206,24 +246,35 @@ async fn get_match_player_info<S: PlayerStore + PlayerRegistrationStore>(
     .await
     {
         let registered_players = storage.get_registered_players(match_data.id).await?;
-        let first_player_arrived = registered_players
-            .iter()
-            .find_map(|reg| Some(reg.player_id == first_player.id))
-            .ok_or(ServerError::PlayerMissing)?;
-        let second_player_arrived = registered_players
-            .iter()
-            .find_map(|reg| Some(reg.player_id == second_player.id))
-            .ok_or(ServerError::PlayerMissing)?;
+        let mut first_player_arrived = false;
+        let mut second_player_arrived = false;
+
+        for registration in registered_players.iter() {
+            if registration.player_id == first_player.id {
+                first_player_arrived = true;
+            } else if registration.player_id == second_player.id {
+                second_player_arrived = true;
+            }
+        }
 
         Ok(PlayerMatchInfo {
             first_player_arrived,
             second_player_arrived,
-            first_player_name: first_player.name,
-            second_player_name: second_player.name,
+            first_player,
+            second_player,
         })
     } else {
         Err(ServerError::PlayerNotFound)
     }
+}
+
+fn get_placement_string(placement: usize) -> String {
+    match placement {
+        1 => "Först i kön",
+        2 => "Andra plats i kön",
+        _ => "Köplats: {}",
+    }
+    .into()
 }
 
 async fn append_to_queue_and_get_placement(
@@ -235,10 +286,5 @@ async fn append_to_queue_and_get_placement(
     let placement = storage
         .get_court_queue_placement(tournament_id, match_id)
         .await?;
-    Ok(match placement {
-        1 => "Först i kön",
-        2 => "Andra plats i kön",
-        _ => "Köplats: {}",
-    }
-    .into())
+    Ok(get_placement_string(placement))
 }
