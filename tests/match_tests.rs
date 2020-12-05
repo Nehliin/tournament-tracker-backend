@@ -3,6 +3,7 @@ use common::{spawn_server, TournamentTrackerClient};
 use reqwest::StatusCode;
 use tournament_tracker_backend::{
     endpoints::PlayerMatchRegistrationRequest,
+    match_operations::TournamentMatchList,
     stores::{
         match_store::Match, player_registration_store::PlayerMatchRegistration,
         player_store::Player, tournament_store::Tournament,
@@ -44,6 +45,22 @@ async fn insert_tournament_and_players(client: &TournamentTrackerClient) -> (i32
     assert!(response.status().is_success());
 
     (tournament_id.parse::<i32>().unwrap(), 0, 1)
+}
+
+async fn register_player(client: &TournamentTrackerClient, match_id: i64, player_id: i64) {
+    let player_registration = PlayerMatchRegistrationRequest {
+        player_id,
+        registered_by: "Svante".to_string(),
+    };
+
+    // register player 1
+    let response = client.register_player(match_id, &player_registration).await;
+    assert!(response.status().is_success());
+    let actual = response.json::<PlayerMatchRegistration>().await.unwrap();
+
+    assert_eq!(player_id, actual.player_id);
+    assert_eq!(match_id, actual.match_id);
+    assert_eq!("Svante".to_string(), actual.registerd_by);
 }
 
 #[actix_rt::test]
@@ -115,26 +132,24 @@ async fn should_register_valid_player_and_start_match() {
 
     let response = client.insert_match(&match_data).await;
     assert!(response.status().is_success());
-    let match_id = response.text().await.unwrap();
+    let match_id: i64 = response.text().await.unwrap().parse().unwrap();
 
-    let player_registration = PlayerMatchRegistrationRequest {
-        player_id: player_one,
-        registered_by: "Svante".to_string(),
-    };
-
-    // register player 2
-    let response = client
-        .register_player(match_id.parse::<i64>().unwrap(), &player_registration)
-        .await;
-    assert!(response.status().is_success());
-    let actual = response.json::<PlayerMatchRegistration>().await.unwrap();
-
-    assert_eq!(player_one, actual.player_id);
-    assert_eq!(match_id.parse::<i64>().unwrap(), actual.match_id);
-    assert_eq!("Svante".to_string(), actual.registerd_by);
+    // register players to start the match
+    register_player(&client, match_id, player_one).await;
+    register_player(&client, match_id, player_two).await;
 
     // ensure the match has started, the match will be #1 in the court queue
-    client
+    let response = client.get_tournaments_matches(tournament_id).await;
+    assert!(response.status().is_success());
+    let match_list = dbg!(response.json::<TournamentMatchList>().await.unwrap());
+    let scheduled_match = &match_list.scheduled[0];
+    assert_eq!(scheduled_match.id, match_id);
+    // first in the queue
+    assert_eq!(scheduled_match.court, Some("Först i kön".into()));
+    assert_eq!(scheduled_match.player_one.id, player_one);
+    assert_eq!(scheduled_match.player_two.id, player_two);
+    assert!(scheduled_match.player_one_arrived);
+    assert!(scheduled_match.player_two_arrived);
 }
 
 #[actix_rt::test]

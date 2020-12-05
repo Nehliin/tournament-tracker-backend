@@ -36,6 +36,17 @@ impl TournamentTrackerClient {
             .expect("Request failed")
     }
 
+    pub async fn get_tournaments_matches(&self, tournament_id: i32) -> Response {
+        self.client
+            .get(&format!(
+                "{}/tournaments/{}/matches",
+                &self.server_addr, tournament_id,
+            ))
+            .send()
+            .await
+            .expect("Request failed")
+    }
+
     pub async fn insert_player(&self, player: &Player) -> Response {
         self.client
             .post(&format!("{}/players", &self.server_addr))
