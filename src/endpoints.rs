@@ -52,7 +52,8 @@ pub async fn get_tournament_matches(
     id: Path<i32>,
     db: Data<PgPool>,
 ) -> Result<impl Responder, ServerError> {
-    let tournaments = db.get_tournaments().await?;
+    let tournaments =
+        crate::match_operations::get_tournament_matches(*id, &*db.into_inner()).await?;
     Ok(HttpResponse::Ok().json(tournaments))
 }
 
