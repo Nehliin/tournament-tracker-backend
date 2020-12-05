@@ -71,7 +71,7 @@ impl CourtStore for PgPool {
 
     #[tracing::instrument(name = "Fetching match court", skip(self))]
     async fn get_match_court(&self, tournament_id: i32, match_id: i64) -> Option<String> {
-         sqlx::query!("SELECT court_name FROM tournament_court_allocation WHERE tournament_id = $1 AND match_id = $2", 
+        sqlx::query!("SELECT court_name FROM tournament_court_allocation WHERE tournament_id = $1 AND match_id = $2", 
             tournament_id,
             match_id
         )
@@ -79,7 +79,7 @@ impl CourtStore for PgPool {
         .await
         .map_err(|err| {
             error!("Failed fetch match court: {}", err);
-            err 
+            err
         })
         .ok()
         .flatten()
