@@ -335,6 +335,27 @@
       ]
     }
   },
+  "99d536808e59721122ff210c66dcb9e0caa1a56203b14fc454e4769a0c29f46f": {
+    "query": "UPDATE tournament_court_allocation SET match_id = $1 WHERE tournament_id = $2 AND match_id IS NULL RETURNING court_name",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "court_name",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Int4"
+        ]
+      },
+      "nullable": [
+        false
+      ]
+    }
+  },
   "d84b56871d984fb46684c72083338cf6b2b918798467f501cb219d4127b278a9": {
     "query": "INSERT INTO tournaments (name, start_date, end_date) VALUES ($1, $2, $3)\n            RETURNING id",
     "describe": {
@@ -350,27 +371,6 @@
           "Text",
           "Date",
           "Date"
-        ]
-      },
-      "nullable": [
-        false
-      ]
-    }
-  },
-  "df0a8eea37d23660d6d2603c612f6f8102eb28648e924f256eecfd56ef9315d8": {
-    "query": "UPDATE tournament_court_allocation SET match_id = $1 WHERE tournament_id = $2 AND match_id = NULL RETURNING court_name",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "court_name",
-          "type_info": "Text"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Int8",
-          "Int4"
         ]
       },
       "nullable": [
