@@ -12,7 +12,7 @@
 CREATE TABLE IF NOT EXISTS tournaments (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,
-  start_date DATE NOT NULL CHECK (start_date >= CURRENT_DATE),
+  start_date DATE NOT NULL,
   end_date DATE NOT NULL CHECK (start_date <= end_date)
 );
 
@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS matches (
 );
 
 CREATE TABLE IF NOT EXISTS court_queue (
-   place_in_queue  TIMESTAMP NOT NULL CHECK (place_in_queue >= CURRENT_TIMESTAMP),
+   place_in_queue  TIMESTAMP NOT NULL,
    match_id BIGINT NOT NULL,
    tournament_id INT NOT NULL,
    PRIMARY KEY (tournament_id, match_id),
