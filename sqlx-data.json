@@ -1,5 +1,55 @@
 {
   "db": "PostgreSQL",
+  "12327a22ce161ed382d641821b9a6618f74cc7181e10cd929b5a53f16ab7f8c0": {
+    "query": "SELECT * FROM matches WHERE tournament_id = $1",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "player_one",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 2,
+          "name": "player_two",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 3,
+          "name": "tournament_id",
+          "type_info": "Int4"
+        },
+        {
+          "ordinal": 4,
+          "name": "class",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 5,
+          "name": "start_time",
+          "type_info": "Timestamp"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int4"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "1526e8c7e058ca5b57bab50b11c42a2e3f22069df8d08f127fafc728a65c3dd6": {
     "query": "SELECT match_id FROM court_queue WHERE tournament_id = $1 ORDER BY place_in_queue ASC LIMIT 1",
     "describe": {
@@ -64,6 +114,38 @@
         false,
         false,
         false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "185c89fdf331faea9115e2a49fce3fc24a15c48f437dd931825d3e8b79a38553": {
+    "query": "SELECT * FROM match_result WHERE match_id = $1",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "match_id",
+          "type_info": "Int8"
+        },
+        {
+          "ordinal": 1,
+          "name": "result",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "winner",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8"
+        ]
+      },
+      "nullable": [
         false,
         false,
         false

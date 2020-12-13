@@ -6,7 +6,8 @@ use tournament_tracker_backend::{
 
 #[actix_web::main]
 async fn main() -> io::Result<()> {
-    let subscriber = get_trace_subscriber("tournament-tracker".into(), "info".into());
+    let (non_blocking, _guard) = tracing_appender::non_blocking(std::io::stdout());
+    let subscriber = get_trace_subscriber("tournament-tracker".into(), "info".into(), non_blocking);
     init_subscriber(subscriber);
 
     let config = get_configuration().expect("Failed to read configuration");

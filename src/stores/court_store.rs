@@ -26,17 +26,14 @@ pub trait CourtStore {
         tournament_court_allocation: TournamentCourtAllocation,
     ) -> Result<(), sqlx::Error>;
 
-    async fn get_match_court(
-        &self,
-        tournament_id: i32,
-        match_id: i64,
-    ) -> Result<Option<String>, sqlx::Error>;
-    // TODO: make this return result instead
+    async fn get_match_court(&self, tournament_id: i32, match_id: i64) -> Option<String>;
+
     async fn try_assign_free_court(
         &self,
         tournament_id: i32,
         match_id: i64,
-    ) -> Result<Option<String>, sqlx::Error>;
+    ) -> Result<String, sqlx::Error>;
+
     async fn append_court_queue(
         &self,
         tournament_id: i32,
@@ -73,12 +70,8 @@ impl CourtStore for PgPool {
     }
 
     #[tracing::instrument(name = "Fetching match court", skip(self))]
-    async fn get_match_court(
-        &self,
-        tournament_id: i32,
-        match_id: i64,
-    ) -> Result<Option<String>, sqlx::Error> {
-        let row = sqlx::query!("SELECT court_name FROM tournament_court_allocation WHERE tournament_id = $1 AND match_id = $2", 
+    async fn get_match_court(&self, tournament_id: i32, match_id: i64) -> Option<String> {
+        sqlx::query!("SELECT court_name FROM tournament_court_allocation WHERE tournament_id = $1 AND match_id = $2", 
             tournament_id,
             match_id
         )
@@ -87,8 +80,10 @@ impl CourtStore for PgPool {
         .map_err(|err| {
             error!("Failed fetch match court: {}", err);
             err
-        })?;
-        Ok(row.map(|row| row.court_name))
+        })
+        .ok()
+        .flatten()
+        .map(|test| test.court_name)
     }
 
     #[tracing::instrument(name = "Trying to assign free court to match", skip(self))]
@@ -96,7 +91,7 @@ impl CourtStore for PgPool {
         &self,
         tournament_id: i32,
         match_id: i64,
-    ) -> Result<Option<String>, sqlx::Error> {
+    ) -> Result<String, sqlx::Error> {
         let row = sqlx::query!("UPDATE tournament_court_allocation SET match_id = $1 WHERE tournament_id = $2 AND match_id = NULL RETURNING court_name",
             match_id,
             tournament_id
@@ -107,7 +102,11 @@ impl CourtStore for PgPool {
             error!("Failed assign free court: {}", err);
             err
         })?;
-        Ok(row.map(|row| row.court_name))
+        if let Some(free_court) = row {
+            Ok(free_court.court_name)
+        } else {
+            Err(sqlx::Error::RowNotFound)
+        }
     }
 
     #[tracing::instrument(name = "Appending match to court queue", skip(self))]

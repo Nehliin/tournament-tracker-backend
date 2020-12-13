@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::net::TcpListener;
 
 use reqwest::{Client, Response};
@@ -31,6 +33,17 @@ impl TournamentTrackerClient {
     pub async fn get_tournaments(&self) -> Response {
         self.client
             .get(&format!("{}/tournaments", &self.server_addr))
+            .send()
+            .await
+            .expect("Request failed")
+    }
+
+    pub async fn get_tournaments_matches(&self, tournament_id: i32) -> Response {
+        self.client
+            .get(&format!(
+                "{}/tournaments/{}/matches",
+                &self.server_addr, tournament_id,
+            ))
             .send()
             .await
             .expect("Request failed")
@@ -81,7 +94,7 @@ impl TournamentTrackerClient {
 
 lazy_static::lazy_static! {
     static ref TRACING: () = {
-        let subscriber = get_trace_subscriber("Test server".into(), "debug".into());
+        let subscriber = get_trace_subscriber("Test server".into(), "debug".into(), || std::io::stdout());
         init_subscriber(subscriber);
     };
 }

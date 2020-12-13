@@ -46,6 +46,17 @@ pub async fn get_tournaments(db: Data<PgPool>) -> Result<impl Responder, ServerE
     Ok(HttpResponse::Ok().json(tournaments))
 }
 
+#[tracing::instrument(name = "Get tournament matches", skip(db))]
+#[get("/tournaments/{id}/matches")]
+pub async fn get_tournament_matches(
+    id: Path<i32>,
+    db: Data<PgPool>,
+) -> Result<impl Responder, ServerError> {
+    let tournaments =
+        crate::match_operations::get_tournament_matches(*id, &*db.into_inner()).await?;
+    Ok(HttpResponse::Ok().json(tournaments))
+}
+
 // Player endpoints
 #[tracing::instrument(name = "Insert player", skip(db))]
 #[post("/players")]
