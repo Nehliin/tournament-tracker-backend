@@ -8,7 +8,7 @@ use sqlx::{PgConnection, PgPool};
 use tokio::runtime::Runtime;
 use tournament_tracker_backend::{
     configuration::{get_configuration, DatabaseSettings},
-    endpoints::PlayerMatchRegistrationRequest,
+    endpoints::{CourtForm, PlayerMatchRegistrationRequest},
     get_trace_subscriber, init_subscriber,
     stores::match_store::Match,
     stores::{player_store::Player, tournament_store::Tournament},
@@ -33,6 +33,22 @@ impl TournamentTrackerClient {
     pub async fn get_tournaments(&self) -> Response {
         self.client
             .get(&format!("{}/tournaments", &self.server_addr))
+            .send()
+            .await
+            .expect("Request failed")
+    }
+
+    pub async fn add_court_to_tournament(
+        &self,
+        tournament_id: i32,
+        court_name: String,
+    ) -> Response {
+        self.client
+            .post(&format!(
+                "{}/tournaments/{}/courts",
+                &self.server_addr, tournament_id
+            ))
+            .form(&CourtForm { name: court_name })
             .send()
             .await
             .expect("Request failed")

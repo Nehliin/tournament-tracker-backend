@@ -96,6 +96,7 @@ pub fn run(listener: TcpListener, db_pool: PgPool) -> io::Result<Server> {
             .service(register_player)
             .service(insert_match)
             .service(get_tournament_matches)
+            .service(add_court_to_tournament)
     })
     .listen(listener)?
     .run();

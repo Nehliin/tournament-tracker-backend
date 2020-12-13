@@ -47,6 +47,27 @@ async fn insert_tournament_and_players(client: &TournamentTrackerClient) -> (i32
     (tournament_id.parse::<i32>().unwrap(), 0, 1)
 }
 
+async fn insert_match(
+    client: &TournamentTrackerClient,
+    tournament_id: i32,
+    player_one: i64,
+    player_two: i64,
+) -> i64 {
+    // insert match
+    let match_data = Match {
+        id: 0, // not important
+        player_one,
+        player_two,
+        tournament_id,
+        class: "p96".to_string(),
+        start_time: Local::now().naive_local() + Duration::hours(2),
+    };
+
+    let response = client.insert_match(&match_data).await;
+    assert!(response.status().is_success());
+    response.text().await.unwrap().parse().unwrap()
+}
+
 async fn register_player(client: &TournamentTrackerClient, match_id: i64, player_id: i64) {
     let player_registration = PlayerMatchRegistrationRequest {
         player_id,
@@ -120,25 +141,13 @@ async fn should_register_valid_player_and_start_match() {
 
     let (tournament_id, player_one, player_two) = insert_tournament_and_players(&client).await;
 
-    // insert match
-    let match_data = Match {
-        id: 0, // not important
-        player_one,
-        player_two,
-        tournament_id,
-        class: "p96".to_string(),
-        start_time: Local::now().naive_local() + Duration::hours(2),
-    };
-
-    let response = client.insert_match(&match_data).await;
-    assert!(response.status().is_success());
-    let match_id: i64 = response.text().await.unwrap().parse().unwrap();
+    let match_id = insert_match(&client, tournament_id, player_one, player_two).await;
 
     // register players to start the match
     register_player(&client, match_id, player_one).await;
     register_player(&client, match_id, player_two).await;
 
-    // ensure the match has started, the match will be #1 in the court queue
+    // ensure the match is scheduled, the match will be #1 in the court queue
     let response = client.get_tournaments_matches(tournament_id).await;
     assert!(response.status().is_success());
     let match_list = response.json::<TournamentMatchList>().await.unwrap();
@@ -158,28 +167,14 @@ async fn should_not_register_invalid_player() {
 
     let (tournament_id, player_one, player_two) = insert_tournament_and_players(&client).await;
 
-    // insert match
-    let match_data = Match {
-        id: 0, // not important
-        player_one,
-        player_two,
-        tournament_id,
-        class: "p96".to_string(),
-        start_time: Local::now().naive_local() + Duration::hours(2),
-    };
-
-    let response = client.insert_match(&match_data).await;
-    assert!(response.status().is_success());
-    let match_id = response.text().await.unwrap();
+    let match_id = insert_match(&client, tournament_id, player_one, player_two).await;
 
     // Try to register player not part of rooster
     let player_registration = PlayerMatchRegistrationRequest {
         player_id: 1337,
         registered_by: "Svante".to_string(),
     };
-    let response = client
-        .register_player(match_id.parse::<i64>().unwrap(), &player_registration)
-        .await;
+    let response = client.register_player(match_id, &player_registration).await;
     assert!(response.status().is_client_error());
 
     // Try to register player twice
@@ -187,9 +182,7 @@ async fn should_not_register_invalid_player() {
         player_id: player_one,
         registered_by: "Svante".to_string(),
     };
-    let response = client
-        .register_player(match_id.parse::<i64>().unwrap(), &player_registration)
-        .await;
+    let response = client.register_player(match_id, &player_registration).await;
     assert!(response.status().is_success());
 
     // Second attempt should fail
@@ -197,8 +190,53 @@ async fn should_not_register_invalid_player() {
         player_id: player_one,
         registered_by: "Svante".to_string(),
     };
-    let response = client
-        .register_player(match_id.parse::<i64>().unwrap(), &player_registration)
-        .await;
+    let response = client.register_player(match_id, &player_registration).await;
     assert!(response.status().is_client_error())
+}
+
+#[actix_rt::test]
+async fn should_assign_free_court_if_available() {
+    let client = spawn_server().await;
+
+    let (tournament_id, player_one, player_two) = insert_tournament_and_players(&client).await;
+
+    let match_id = insert_match(&client, tournament_id, player_one, player_two).await;
+    let response = client
+        .add_court_to_tournament(tournament_id, "Bana 1".to_string())
+        .await;
+    assert!(response.status().is_success());
+    // register players to start the match
+    register_player(&client, match_id, player_one).await;
+    register_player(&client, match_id, player_two).await;
+
+    // ensure the match has started
+    let response = client.get_tournaments_matches(tournament_id).await;
+    assert!(response.status().is_success());
+    let match_list = response.json::<TournamentMatchList>().await.unwrap();
+    let playing_match = &dbg!(&match_list).playing[0];
+    assert_eq!(playing_match.id, match_id);
+    // assigned the free court
+    assert_eq!(playing_match.court, Some("Bana 1".into()));
+    assert_eq!(playing_match.player_one.id, player_one);
+    assert_eq!(playing_match.player_two.id, player_two);
+    assert!(playing_match.player_one_arrived);
+    assert!(playing_match.player_two_arrived);
+
+    let match_id_2 = insert_match(&client, tournament_id, player_one, player_two).await;
+    // register players to start the match
+    register_player(&client, match_id_2, player_one).await;
+    register_player(&client, match_id_2, player_two).await;
+
+    let response = client.get_tournaments_matches(tournament_id).await;
+    let match_list = response.json::<TournamentMatchList>().await.unwrap();
+    // same playing match as above
+    assert_eq!(playing_match, &match_list.playing[0]);
+    let scheduled_match = &match_list.scheduled[0];
+    assert_eq!(scheduled_match.id, match_id_2);
+    // First place in the court queue
+    assert_eq!(scheduled_match.court, Some("Först i kön".into()));
+    assert_eq!(scheduled_match.player_one.id, player_one);
+    assert_eq!(scheduled_match.player_two.id, player_two);
+    assert!(scheduled_match.player_one_arrived);
+    assert!(scheduled_match.player_two_arrived);
 }
