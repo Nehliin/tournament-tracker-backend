@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS matches (
 );
 
 CREATE TABLE IF NOT EXISTS court_queue (
-   place_in_queue  TIMESTAMP NOT NULL CHECK (place_in_queue > CURRENT_TIMESTAMP),
+   place_in_queue  TIMESTAMP NOT NULL CHECK (place_in_queue >= CURRENT_TIMESTAMP),
    match_id BIGINT NOT NULL,
    tournament_id INT NOT NULL,
    PRIMARY KEY (tournament_id, match_id),

@@ -9,7 +9,9 @@ use tracing::{subscriber::set_global_default, Subscriber};
 use tracing_actix_web::TracingLogger;
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_log::LogTracer;
-use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, EnvFilter, Registry};
+use tracing_subscriber::{
+    fmt::MakeWriter, prelude::__tracing_subscriber_SubscriberExt, EnvFilter, Registry,
+};
 
 pub mod configuration;
 pub mod endpoints;
@@ -64,10 +66,11 @@ impl ResponseError for ServerError {
 pub fn get_trace_subscriber(
     name: String,
     fallback_filter: String,
+    writer: impl MakeWriter + Sync + Send + 'static,
 ) -> impl Subscriber + Send + Sync {
     let env_filter =
         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(fallback_filter));
-    let formatting_layer = BunyanFormattingLayer::new(name, std::io::stdout);
+    let formatting_layer = BunyanFormattingLayer::new(name, writer);
 
     Registry::default()
         .with(env_filter)

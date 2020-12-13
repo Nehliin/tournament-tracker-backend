@@ -141,7 +141,7 @@ async fn should_register_valid_player_and_start_match() {
     // ensure the match has started, the match will be #1 in the court queue
     let response = client.get_tournaments_matches(tournament_id).await;
     assert!(response.status().is_success());
-    let match_list = dbg!(response.json::<TournamentMatchList>().await.unwrap());
+    let match_list = response.json::<TournamentMatchList>().await.unwrap();
     let scheduled_match = &match_list.scheduled[0];
     assert_eq!(scheduled_match.id, match_id);
     // first in the queue

@@ -92,7 +92,7 @@ impl TournamentTrackerClient {
 
 lazy_static::lazy_static! {
     static ref TRACING: () = {
-        let subscriber = get_trace_subscriber("Test server".into(), "debug".into());
+        let subscriber = get_trace_subscriber("Test server".into(), "debug".into(), || std::io::stdout());
         init_subscriber(subscriber);
     };
 }
