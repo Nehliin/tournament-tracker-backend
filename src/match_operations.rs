@@ -226,6 +226,46 @@ where
     }
 }
 
+#[tracing::instrument(name = "Finish match", skip(storage))]
+pub async fn finish_match<S>(match_id: i64, result: MatchResult,storage: &S) -> Result<MatchInfo, ServerError>
+where
+    S: MatchStore + PlayerRegistrationStore + PlayerStore + CourtStore,
+{
+    let match_data = storage.get_match(match_id).await?;
+
+    let match_data = match match_data {
+        Some(data) => data,
+        None => return Err(ServerError::MatchNotFound) 
+    };
+    
+    // check if court alreay has assigned court
+    if storage
+        .get_match_court(match_data.tournament_id, match_data.id)
+        .await
+        .is_some()
+    {
+        return Err(ServerError::MatchAlreadyStarted);
+    }
+
+    // check player registration
+    let player_info = get_match_player_info(storage, &match_data).await?;
+    // if no court assigned and players are present
+    // try to assign free court
+    if let Ok(assigned_court) = storage
+        .try_assign_free_court(match_data.tournament_id, match_data.id)
+        .await
+    {
+        Ok(MatchInfo {
+            start_time: Local::now().naive_local(),
+            ..MatchInfo::without_winner(match_data, player_info, assigned_court)
+        })
+    } else {
+        let court =
+            append_to_queue_and_get_placement(storage, match_data.tournament_id, match_id).await?;
+        Ok(MatchInfo::without_winner(match_data, player_info, court))
+    }
+}
+
 // HELPERS:
 #[derive(Debug)]
 struct PlayerMatchInfo {
