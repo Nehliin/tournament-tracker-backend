@@ -1,6 +1,7 @@
 use crate::{
     match_operations::register_player_to_match,
     stores::{
+        court_store::{CourtStore, TournamentCourtAllocation},
         match_store::{Match, MatchStore},
         player_store::{Player, PlayerStore},
         tournament_store::{Tournament, TournamentStore},
@@ -10,7 +11,7 @@ use crate::{
 use actix_web::{
     get, post,
     web::Path,
-    web::{Data, Json},
+    web::{Data, Form, Json},
     HttpResponse, Responder,
 };
 use chrono::Local;
@@ -55,6 +56,28 @@ pub async fn get_tournament_matches(
     let tournaments =
         crate::match_operations::get_tournament_matches(*id, &*db.into_inner()).await?;
     Ok(HttpResponse::Ok().json(tournaments))
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CourtForm {
+    pub name: String,
+}
+
+#[tracing::instrument(name = "Add court to tournament", skip(db))]
+#[post("/tournaments/{id}/courts")]
+pub async fn add_court_to_tournament(
+    id: Path<i32>,
+    court_form: Form<CourtForm>,
+    db: Data<PgPool>,
+) -> Result<impl Responder, ServerError> {
+    let court_allocation = TournamentCourtAllocation {
+        court_name: court_form.into_inner().name,
+        tournament_id: *id,
+        match_id: None,
+    };
+    db.insert_tournament_court_allocation(court_allocation)
+        .await?;
+    Ok(HttpResponse::Ok())
 }
 
 // Player endpoints
