@@ -92,7 +92,7 @@ impl CourtStore for PgPool {
         tournament_id: i32,
         match_id: i64,
     ) -> Result<String, sqlx::Error> {
-        let row = sqlx::query!("UPDATE tournament_court_allocation SET match_id = $1 WHERE tournament_id = $2 AND match_id = NULL RETURNING court_name",
+        let row = sqlx::query!("UPDATE tournament_court_allocation SET match_id = $1 WHERE tournament_id = $2 AND match_id IS NULL RETURNING court_name",
             match_id,
             tournament_id
         )
