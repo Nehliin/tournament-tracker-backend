@@ -1,3 +1,5 @@
+use crate::match_operations::finish_match;
+use crate::stores::match_store::MatchResult;
 use crate::{
     match_operations::register_player_to_match,
     stores::{
@@ -9,7 +11,7 @@ use crate::{
     ServerError,
 };
 use actix_web::{
-    get, post,
+    get, post, put,
     web::Path,
     web::{Data, Form, Json},
     HttpResponse, Responder,
@@ -118,6 +120,17 @@ pub async fn insert_match(
     }
 }
 
+#[tracing::instrument(name = "Finish match", skip(db))]
+#[put("/matches/{match_id}/finish")]
+pub async fn finish_match_endpoint(
+    id: Path<i64>,
+    result: Json<MatchResult>,
+    db: Data<PgPool>,
+) -> Result<impl Responder, ServerError> {
+    let match_info = finish_match(*id, result.into_inner(), &db).await?;
+    Ok(HttpResponse::Ok().json(match_info))
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PlayerMatchRegistrationRequest {
     pub player_id: i64,
@@ -133,6 +146,6 @@ pub async fn register_player(
     storage: Data<PgPool>,
 ) -> Result<impl Responder, ServerError> {
     let match_registration =
-        register_player_to_match(&*storage.into_inner(), *match_id, payload.0).await?;
+        register_player_to_match(&*storage.into_inner(), *match_id, payload.into_inner()).await?;
     Ok(HttpResponse::Ok().json(match_registration))
 }
