@@ -1,6 +1,8 @@
 use chrono::{Duration, Local};
 use common::{spawn_server, TournamentTrackerClient};
-use reqwest::StatusCode;
+use reqwest::{Response, StatusCode};
+use tournament_tracker_backend::match_operations::MatchInfo;
+use tournament_tracker_backend::stores::match_store::MatchResult;
 use tournament_tracker_backend::{
     endpoints::PlayerMatchRegistrationRequest,
     match_operations::TournamentMatchList,
@@ -213,7 +215,7 @@ async fn should_assign_free_court_if_available() {
     let response = client.get_tournaments_matches(tournament_id).await;
     assert!(response.status().is_success());
     let match_list = response.json::<TournamentMatchList>().await.unwrap();
-    let playing_match = &dbg!(&match_list).playing[0];
+    let playing_match = &match_list.playing[0];
     assert_eq!(playing_match.id, match_id);
     // assigned the free court
     assert_eq!(playing_match.court, Some("Bana 1".into()));
@@ -239,4 +241,132 @@ async fn should_assign_free_court_if_available() {
     assert_eq!(scheduled_match.player_two.id, player_two);
     assert!(scheduled_match.player_one_arrived);
     assert!(scheduled_match.player_two_arrived);
+}
+
+#[actix_rt::test]
+async fn should_assign_court_when_match_is_finished() {
+    let client = spawn_server().await;
+
+    let (tournament_id, player_one, player_two) = insert_tournament_and_players(&client).await;
+
+    let match_id_1 = insert_match(&client, tournament_id, player_one, player_two).await;
+    let response = client
+        .add_court_to_tournament(tournament_id, "Bana 1".to_string())
+        .await;
+    assert!(response.status().is_success());
+
+    let player = Player {
+        id: 2,
+        name: "Kalle kula".into(),
+    };
+
+    // insert player 1
+    let response = client.insert_player(&player).await;
+    assert!(response.status().is_success());
+
+    let player = Player {
+        id: 3,
+        name: "Snurre Sprätt".into(),
+    };
+
+    // insert player 2
+    let response = client.insert_player(&player).await;
+    assert!(response.status().is_success());
+    let match_id_2 = insert_match(&client, tournament_id, 2, 3).await;
+
+    // register players to start the match
+    register_player(&client, match_id_1, player_one).await;
+    register_player(&client, match_id_1, player_two).await;
+    // register players which adds the match to the queue
+    register_player(&client, match_id_2, 2).await;
+    register_player(&client, match_id_2, 3).await;
+
+    // assert one match is playing and one is waiting for a court
+    let response = client.get_tournaments_matches(tournament_id).await;
+    assert!(response.status().is_success());
+    let match_list = response.json::<TournamentMatchList>().await.unwrap();
+    assert_eq!(match_list.playing.len(), 1);
+    assert_eq!(match_list.playing[0].id, match_id_1);
+    assert_eq!(match_list.scheduled.len(), 1);
+    assert_eq!(match_list.scheduled[0].id, match_id_2);
+
+    // finish match
+    let response = client
+        .finish_match(
+            match_id_1,
+            &MatchResult {
+                result: "2-3(2) 4-4 3-3(2)".to_string(),
+                winner: player_one,
+            },
+        )
+        .await;
+    assert!(response.status().is_success());
+    let match_info = response.json::<MatchInfo>().await.unwrap();
+    assert_eq!(match_info.result, Some("2-3(2) 4-4 3-3(2)".to_string()));
+    assert_eq!(match_info.winner, Some(player_one));
+    assert_eq!(match_info.court, None);
+    assert!(match_info.player_two_arrived);
+    assert!(match_info.player_one_arrived);
+    assert_eq!(match_info.player_one.id, player_one);
+    assert_eq!(match_info.player_two.id, player_two);
+    // assert tournament_matches has been updated
+    let response = client.get_tournaments_matches(tournament_id).await;
+    assert!(response.status().is_success());
+    let match_list = response.json::<TournamentMatchList>().await.unwrap();
+    // match has been finished
+    assert_eq!(match_list.finished.len(), 1);
+    assert_eq!(match_list.finished[0].id, match_id_1);
+    assert_eq!(match_list.finished[0], match_info);
+    // match 2 has started playing on the correct court
+    assert_eq!(match_list.playing.len(), 1);
+    assert_eq!(match_list.playing[0].id, match_id_2);
+    assert_eq!(match_list.playing[0].court, Some("Bana 1".to_string()));
+    // no scheduled matches
+    assert!(match_list.scheduled.is_empty());
+}
+
+async fn create_and_finish_match(
+    client: &TournamentTrackerClient,
+    match_result: &MatchResult,
+) -> Response {
+    let (tournament_id, player_one, player_two) = insert_tournament_and_players(&client).await;
+
+    let match_id = insert_match(&client, tournament_id, player_one, player_two).await;
+    let response = client
+        .add_court_to_tournament(tournament_id, "Bana 1".to_string())
+        .await;
+    assert!(response.status().is_success());
+    // register players to start the match
+    register_player(&client, match_id, player_one).await;
+    register_player(&client, match_id, player_two).await;
+
+    client.finish_match(match_id, match_result).await
+}
+
+#[actix_rt::test]
+async fn should_not_allow_invalid_result() {
+    let client = spawn_server().await;
+    let response = create_and_finish_match(
+        &client,
+        &MatchResult {
+            result: "2-3-4-5 6-2(2)".to_string(),
+            winner: 0, // player_one
+        },
+    )
+    .await;
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+}
+
+#[actix_rt::test]
+async fn should_not_allow_invalid_winner() {
+    let client = spawn_server().await;
+    let response = create_and_finish_match(
+        &client,
+        &MatchResult {
+            result: "2-3(2) 4-4 3-3(2)".to_string(),
+            winner: 10,
+        },
+    )
+    .await;
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 }

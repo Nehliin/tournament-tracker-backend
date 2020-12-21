@@ -1,5 +1,31 @@
 {
   "db": "PostgreSQL",
+  "0e2bcc6fddb31beada70af7282f372d453b94477eb728249d59dc2e3f0578e8c": {
+    "query": "SELECT result, winner FROM match_result WHERE match_id = $1",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "result",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 1,
+          "name": "winner",
+          "type_info": "Int8"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8"
+        ]
+      },
+      "nullable": [
+        false,
+        false
+      ]
+    }
+  },
   "12327a22ce161ed382d641821b9a6618f74cc7181e10cd929b5a53f16ab7f8c0": {
     "query": "SELECT * FROM matches WHERE tournament_id = $1",
     "describe": {
@@ -120,38 +146,6 @@
       ]
     }
   },
-  "185c89fdf331faea9115e2a49fce3fc24a15c48f437dd931825d3e8b79a38553": {
-    "query": "SELECT * FROM match_result WHERE match_id = $1",
-    "describe": {
-      "columns": [
-        {
-          "ordinal": 0,
-          "name": "match_id",
-          "type_info": "Int8"
-        },
-        {
-          "ordinal": 1,
-          "name": "result",
-          "type_info": "Text"
-        },
-        {
-          "ordinal": 2,
-          "name": "winner",
-          "type_info": "Int8"
-        }
-      ],
-      "parameters": {
-        "Left": [
-          "Int8"
-        ]
-      },
-      "nullable": [
-        false,
-        false,
-        false
-      ]
-    }
-  },
   "23f5f9e8eefbad33f54549f5a9fb54af11718cc24c778ba8c4f2d3d1aa6d2e18": {
     "query": "INSERT INTO tournament_court_allocation (court_name, tournament_id, match_id) VALUES ($1, $2, $3)",
     "describe": {
@@ -185,6 +179,20 @@
       "nullable": [
         false
       ]
+    }
+  },
+  "2c8ad3944a1b154fe031db7a3d84b9d3d59cd329e2c26afb9618713216caaebb": {
+    "query": "INSERT INTO match_result (match_id, result, winner) VALUES ($1, $2, $3)",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Text",
+          "Int8"
+        ]
+      },
+      "nullable": []
     }
   },
   "2ef18dbde83c0e3d7c89c147fe33af7ba7d55b94404f029d5f416fa867f20998": {
@@ -425,6 +433,27 @@
         false,
         false,
         false,
+        false
+      ]
+    }
+  },
+  "fc33e4c9319f83ade24a5765472ed98c90e6c5e5e9ed43cc06c08ae2345a2d30": {
+    "query": "UPDATE tournament_court_allocation SET match_id = NULL WHERE tournament_id = $2 AND match_id = $1 RETURNING court_name",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "court_name",
+          "type_info": "Text"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Int8",
+          "Int4"
+        ]
+      },
+      "nullable": [
         false
       ]
     }

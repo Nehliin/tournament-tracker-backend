@@ -1,3 +1,4 @@
+use crate::stores::court_store::pop_court_queue;
 use crate::stores::match_store::MatchResult;
 use crate::{
     endpoints::PlayerMatchRegistrationRequest,
@@ -13,9 +14,12 @@ use crate::{
 };
 use chrono::{Local, NaiveDateTime};
 use futures::future;
+use once_cell::sync::Lazy;
+use regex::Regex;
 use serde::Deserialize;
 use serde::Serialize;
-use tracing::{error, warn};
+use sqlx::PgPool;
+use tracing::{error, info, warn};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct MatchInfo {
@@ -66,14 +70,11 @@ impl MatchInfo {
     }
 }
 
-pub async fn register_player_to_match<S>(
-    storage: &S,
+pub async fn register_player_to_match(
+    storage: &PgPool,
     match_id: i64,
     mut request: PlayerMatchRegistrationRequest,
-) -> Result<PlayerMatchRegistration, ServerError>
-where
-    S: MatchStore + PlayerRegistrationStore + PlayerStore + CourtStore,
-{
+) -> Result<PlayerMatchRegistration, ServerError> {
     let match_data = storage.get_match(match_id).await?;
 
     if match_data.is_none() {
@@ -114,13 +115,10 @@ pub struct TournamentMatchList {
 }
 
 #[tracing::instrument(name = "Get tournament match list", skip(storage))]
-pub async fn get_tournament_matches<S>(
+pub async fn get_tournament_matches(
     tournament_id: i32,
-    storage: &S,
-) -> Result<TournamentMatchList, ServerError>
-where
-    S: MatchStore + PlayerStore + PlayerRegistrationStore + CourtStore,
-{
+    storage: &PgPool,
+) -> Result<TournamentMatchList, ServerError> {
     let query_result = storage.get_tournament_matches(tournament_id).await?;
 
     let mut finished = Vec::new();
@@ -187,10 +185,7 @@ where
 }
 
 #[tracing::instrument(name = "Start match", skip(storage))]
-pub async fn start_match<S>(match_id: i64, storage: &S) -> Result<MatchInfo, ServerError>
-where
-    S: MatchStore + PlayerRegistrationStore + PlayerStore + CourtStore,
-{
+pub async fn start_match(match_id: i64, storage: &PgPool) -> Result<MatchInfo, ServerError> {
     let match_data = storage.get_match(match_id).await?;
 
     if match_data.is_none() {
@@ -224,6 +219,68 @@ where
             append_to_queue_and_get_placement(storage, match_data.tournament_id, match_id).await?;
         Ok(MatchInfo::without_winner(match_data, player_info, court))
     }
+}
+
+#[tracing::instrument(name = "Finish match", skip(storage))]
+pub async fn finish_match(
+    match_id: i64,
+    result: MatchResult,
+    storage: &PgPool,
+) -> Result<MatchInfo, ServerError> {
+    let match_data = storage.get_match(match_id).await?;
+
+    let match_data = match match_data {
+        Some(data) => data,
+        None => return Err(ServerError::MatchNotFound),
+    };
+
+    let _ = check_valid_match_result(&result, &match_data)?;
+
+    if storage.get_match_result(match_id).await.is_some() {
+        return Err(ServerError::MatchAlreadyCompleted);
+    }
+
+    if storage
+        .get_match_court(match_data.tournament_id, match_id)
+        .await
+        .is_none()
+    {
+        return Err(ServerError::MatchNotStarted);
+    }
+
+    storage.insert_match_result(match_id, &result).await?;
+    // will rollback if dropped -> failures will result in rollback
+    // 1. create transaction
+    // 2. remove court assoication to the match
+    // 3. pop court queue
+    // 4. assign next match in the queue the free court
+    let mut transaction = storage.begin().await?;
+    let _ = transaction
+        .remove_assigned_court(match_data.tournament_id, match_id)
+        .await?;
+    if let Some(waiting_match) = pop_court_queue(&mut transaction, match_data.tournament_id).await?
+    {
+        // There should always exist a free court here since the finished match just
+        // freed up the court it used
+        let court_name = transaction
+            .try_assign_free_court(match_data.tournament_id, waiting_match)
+            .await?;
+        info!(
+            "Assigning court: {} to match: {}",
+            court_name, waiting_match
+        );
+        transaction.commit().await.map_err(|err| {
+            error!("Transaction failed!");
+            err
+        })?;
+    } else {
+        transaction.commit().await.map_err(|err| {
+            error!("Transaction failed!");
+            err
+        })?;
+    }
+    let player_info = get_match_player_info(storage, &match_data).await?;
+    Ok(MatchInfo::with_winner(match_data, player_info, result))
 }
 
 // HELPERS:
@@ -268,6 +325,19 @@ async fn get_match_player_info<S: PlayerStore + PlayerRegistrationStore>(
     }
 }
 
+const PATTERN: &str = r"^([0-9]+-[0-9]+(\([0-9]+\))?\s{1})+([0-9]+-[0-9]+(\([0-9]+\))?)$";
+static RESULT_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(PATTERN).expect("Regex is invalid"));
+
+fn check_valid_match_result(result: &MatchResult, match_data: &Match) -> Result<(), ServerError> {
+    if result.winner != match_data.player_one && result.winner != match_data.player_two {
+        Err(ServerError::InvalidWinner)
+    } else if !RESULT_REGEX.is_match(&result.result.trim()) {
+        Err(ServerError::InvalidResult)
+    } else {
+        Ok(())
+    }
+}
+
 fn get_placement_string(placement: usize) -> String {
     match placement {
         1 => "Först i kön",
@@ -278,7 +348,7 @@ fn get_placement_string(placement: usize) -> String {
 }
 
 async fn append_to_queue_and_get_placement(
-    storage: &impl CourtStore,
+    storage: &PgPool,
     tournament_id: i32,
     match_id: i64,
 ) -> Result<String, sqlx::Error> {

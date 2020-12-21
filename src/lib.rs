@@ -33,6 +33,14 @@ pub enum ServerError {
     InvalidRooster,
     #[error("Invalid player registration")]
     InvalidPlayerRegistration,
+    #[error("Invalid winner, player not part of match")]
+    InvalidWinner,
+    #[error("Invalid result, the result string isn't a valid score")]
+    InvalidResult,
+    #[error("Match already completed")]
+    MatchAlreadyCompleted,
+    #[error("Can't finish match, it hasn't started yet")]
+    MatchNotStarted,
     #[error("Player already registered to match")]
     PlayerAlreadyReigstered,
     #[error("Can't start match, player is missing")]
@@ -55,10 +63,15 @@ impl ResponseError for ServerError {
             | ServerError::InvalidRooster
             | ServerError::InvalidStartTime
             | ServerError::InvalidPlayerRegistration
+            | ServerError::InvalidWinner
+            | ServerError::InvalidResult
             | ServerError::MatchAlreadyStarted
             | ServerError::PlayerAlreadyReigstered => http::StatusCode::BAD_REQUEST,
             ServerError::MatchNotFound | ServerError::PlayerNotFound => http::StatusCode::NOT_FOUND,
             ServerError::InternalDataBaseError(_) => http::StatusCode::INTERNAL_SERVER_ERROR,
+            ServerError::MatchNotStarted | ServerError::MatchAlreadyCompleted => {
+                http::StatusCode::CONFLICT
+            }
         }
     }
 }
@@ -97,6 +110,7 @@ pub fn run(listener: TcpListener, db_pool: PgPool) -> io::Result<Server> {
             .service(insert_match)
             .service(get_tournament_matches)
             .service(add_court_to_tournament)
+            .service(finish_match_endpoint)
     })
     .listen(listener)?
     .run();

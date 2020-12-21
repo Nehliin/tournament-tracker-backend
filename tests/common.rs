@@ -6,6 +6,7 @@ use reqwest::{Client, Response};
 use sqlx::{Connection, Executor};
 use sqlx::{PgConnection, PgPool};
 use tokio::runtime::Runtime;
+use tournament_tracker_backend::stores::match_store::MatchResult;
 use tournament_tracker_backend::{
     configuration::{get_configuration, DatabaseSettings},
     endpoints::{CourtForm, PlayerMatchRegistrationRequest},
@@ -86,6 +87,18 @@ impl TournamentTrackerClient {
         self.client
             .post(&format!("{}/matches", &self.server_addr))
             .json(&match_data)
+            .send()
+            .await
+            .expect("Request failed")
+    }
+
+    pub async fn finish_match(&self, match_id: i64, match_result: &MatchResult) -> Response {
+        self.client
+            .put(&format!(
+                "{}/matches/{}/finish",
+                &self.server_addr, match_id
+            ))
+            .json(&match_result)
             .send()
             .await
             .expect("Request failed")

@@ -21,7 +21,6 @@ pub struct Match {
 
 #[derive(Debug, PartialEq, sqlx::FromRow, Deserialize, Serialize)]
 pub struct MatchResult {
-    pub match_id: i64,
     pub result: String,
     pub winner: i64,
 }
@@ -32,6 +31,11 @@ pub trait MatchStore {
     async fn get_match(&self, match_id: i64) -> Result<Option<Match>, sqlx::Error>;
     async fn get_tournament_matches(&self, tournament_id: i32) -> Result<Vec<Match>, sqlx::Error>;
     async fn get_match_result(&self, match_id: i64) -> Option<MatchResult>;
+    async fn insert_match_result(
+        &self,
+        match_id: i64,
+        match_result: &MatchResult,
+    ) -> Result<(), sqlx::Error>;
 }
 
 #[async_trait]
@@ -89,7 +93,7 @@ impl MatchStore for PgPool {
     async fn get_match_result(&self, match_id: i64) -> Option<MatchResult> {
         sqlx::query_as!(
             MatchResult,
-            "SELECT * FROM match_result WHERE match_id = $1",
+            "SELECT result, winner FROM match_result WHERE match_id = $1",
             match_id
         )
         .fetch_optional(self)
@@ -99,5 +103,26 @@ impl MatchStore for PgPool {
         })
         .ok()
         .flatten()
+    }
+
+    #[tracing::instrument(name = "Insert match result", skip(self))]
+    async fn insert_match_result(
+        &self,
+        match_id: i64,
+        match_result: &MatchResult,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "INSERT INTO match_result (match_id, result, winner) VALUES ($1, $2, $3)",
+            match_id,
+            match_result.result,
+            match_result.winner,
+        )
+        .execute(self)
+        .await
+        .map_err(|err| {
+            error!("Failed to insert match result {}", err);
+            err
+        })?;
+        Ok(())
     }
 }
