@@ -25,12 +25,6 @@ RUN cargo build --release --bin app
 # Runtime stage
 FROM debian:buster-slim AS runtime
 WORKDIR /app
-RUN apt-get update -y \
-    && apt-get install -y --no-install-recommends openssl \
-    # Clean up
-    && apt-get autoremove -y \
-    && apt-get clean -y \
-    && rm -rf /var/lib/apt/lists/*
 
 # Copy the compiled binary from the builder environment 
 # to our runtime environment
