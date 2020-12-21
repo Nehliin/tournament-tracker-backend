@@ -273,6 +273,11 @@ pub async fn finish_match(
             error!("Transaction failed!");
             err
         })?;
+    } else {
+        transaction.commit().await.map_err(|err| {
+            error!("Transaction failed!");
+            err
+        })?;
     }
     let player_info = get_match_player_info(storage, &match_data).await?;
     Ok(MatchInfo::with_winner(match_data, player_info, result))
