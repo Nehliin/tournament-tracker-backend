@@ -1,4 +1,5 @@
-use actix_web::{dev::Server, http, HttpServer, ResponseError};
+use actix_web::dev::{Service, ServiceRequest, ServiceResponse};
+use actix_web::{dev::Server, guard, http, web, HttpServer, ResponseError};
 use actix_web::{web::Data, App};
 use endpoints::*;
 use sqlx::PgPool;
@@ -13,6 +14,7 @@ use tracing_subscriber::{
     fmt::MakeWriter, prelude::__tracing_subscriber_SubscriberExt, EnvFilter, Registry,
 };
 
+mod authentication;
 pub mod configuration;
 pub mod endpoints;
 pub mod match_operations;
@@ -96,21 +98,37 @@ pub fn init_subscriber(subscriber: impl Subscriber + Send + Sync) {
     set_global_default(subscriber).expect("Failed to set subscriber");
 }
 
+async fn authenticate_request(request: ServiceRequest) -> Result<ServiceResponse, ServerError> {
+    todo!()
+}
+
 pub fn run(listener: TcpListener, db_pool: PgPool) -> io::Result<Server> {
     let server = HttpServer::new(move || {
         App::new()
             .app_data(Data::new(db_pool.clone()))
             .wrap(TracingLogger)
-            .service(insert_tournament)
+            // authenticated scope
+            .service(
+                web::scope("/")
+                    .wrap_fn(|req, srv| {
+                        let clone = req.clone();
+                        let response_fut = srv.call(req);
+                        async {
+                            let authenticated_request = authenticate_request(req).await?;
+                            Ok(authenticated_request)
+                        }
+                    })
+                    .service(insert_tournament)
+                    .service(insert_match)
+                    .service(insert_player)
+                    .service(register_player)
+                    .service(add_court_to_tournament)
+                    .service(finish_match_endpoint),
+            )
             .service(get_tournaments)
             .service(health_check)
-            .service(insert_player)
             .service(get_player)
-            .service(register_player)
-            .service(insert_match)
             .service(get_tournament_matches)
-            .service(add_court_to_tournament)
-            .service(finish_match_endpoint)
     })
     .listen(listener)?
     .run();
