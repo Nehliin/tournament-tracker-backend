@@ -121,7 +121,7 @@ pub async fn insert_match(
 }
 
 #[tracing::instrument(name = "Finish match", skip(db))]
-#[put("/matches/{match_id}/finish")]
+#[post("/matches/{match_id}/finish")]
 pub async fn finish_match_endpoint(
     id: Path<i64>,
     result: Json<MatchResult>,

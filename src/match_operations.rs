@@ -234,11 +234,11 @@ pub async fn finish_match(
         None => return Err(ServerError::MatchNotFound),
     };
 
-    let _ = check_valid_match_result(&result, &match_data)?;
-
     if storage.get_match_result(match_id).await.is_some() {
         return Err(ServerError::MatchAlreadyCompleted);
     }
+
+    let _ = check_valid_match_result(&result, &match_data)?;
 
     if storage
         .get_match_court(match_data.tournament_id, match_id)
