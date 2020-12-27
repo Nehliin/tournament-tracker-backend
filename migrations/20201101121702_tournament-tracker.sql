@@ -105,7 +105,8 @@ CREATE TABLE IF NOT EXISTS register (
 );
 
 CREATE TABLE IF NOT EXISTS users (
-    email TEXT PRIMARY KEY,
+    id UUID PRIMARY KEY,
+    email TEXT NOT NULL,
     password TEXT NOT NULL,
     created_at TIMESTAMP NOT NULL
 );
