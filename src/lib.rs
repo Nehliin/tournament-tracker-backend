@@ -1,6 +1,7 @@
-use actix_web::dev::{Service, ServiceRequest, ServiceResponse};
-use actix_web::{dev::Server, guard, http, web, HttpServer, ResponseError};
+use actix_web::{dev::Server, http, web, HttpServer, ResponseError};
 use actix_web::{web::Data, App};
+use actix_web_httpauth::{extractors::bearer::BearerAuth, middleware::HttpAuthentication};
+use authentication::authenticate_request;
 use endpoints::*;
 use sqlx::PgPool;
 use std::io;
@@ -10,9 +11,7 @@ use tracing::{subscriber::set_global_default, Subscriber};
 use tracing_actix_web::TracingLogger;
 use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_log::LogTracer;
-use tracing_subscriber::{
-    fmt::MakeWriter, prelude::__tracing_subscriber_SubscriberExt, EnvFilter, Registry,
-};
+use tracing_subscriber::{fmt::MakeWriter, prelude::*, EnvFilter, Registry};
 
 mod authentication;
 pub mod configuration;
@@ -53,6 +52,14 @@ pub enum ServerError {
     MatchNotFound,
     #[error("Match already started")]
     MatchAlreadyStarted,
+    #[error("Invalid email")]
+    InvalidEmail,
+    #[error("Invalid password")]
+    InvalidPassword,
+    #[error("Invalid auth token")]
+    InvalidToken,
+    #[error("Login failed")]
+    LoginFailed,
     #[error("Internal Database error")]
     InternalDataBaseError(#[from] sqlx::Error),
 }
@@ -68,9 +75,14 @@ impl ResponseError for ServerError {
             | ServerError::InvalidWinner
             | ServerError::InvalidResult
             | ServerError::MatchAlreadyStarted
+            | ServerError::InvalidPassword
+            | ServerError::InvalidEmail
             | ServerError::PlayerAlreadyReigstered => http::StatusCode::BAD_REQUEST,
             ServerError::MatchNotFound | ServerError::PlayerNotFound => http::StatusCode::NOT_FOUND,
-            ServerError::InternalDataBaseError(_) => http::StatusCode::INTERNAL_SERVER_ERROR,
+            ServerError::InternalDataBaseError(_) | ServerError::LoginFailed => {
+                http::StatusCode::INTERNAL_SERVER_ERROR
+            }
+            ServerError::InvalidToken => http::StatusCode::UNAUTHORIZED,
             ServerError::MatchNotStarted | ServerError::MatchAlreadyCompleted => {
                 http::StatusCode::CONFLICT
             }
@@ -98,26 +110,20 @@ pub fn init_subscriber(subscriber: impl Subscriber + Send + Sync) {
     set_global_default(subscriber).expect("Failed to set subscriber");
 }
 
-async fn authenticate_request(request: ServiceRequest) -> Result<ServiceResponse, ServerError> {
-    todo!()
-}
-
 pub fn run(listener: TcpListener, db_pool: PgPool) -> io::Result<Server> {
     let server = HttpServer::new(move || {
+        let pool_clone = db_pool.clone();
+        let auth = HttpAuthentication::bearer(move |req, credentials: BearerAuth| {
+            let clone = pool_clone.clone();
+            authenticate_request(clone, req, credentials)
+        });
         App::new()
             .app_data(Data::new(db_pool.clone()))
             .wrap(TracingLogger)
             // authenticated scope
             .service(
                 web::scope("/")
-                    .wrap_fn(|req, srv| {
-                        let clone = req.clone();
-                        let response_fut = srv.call(req);
-                        async {
-                            let authenticated_request = authenticate_request(req).await?;
-                            Ok(authenticated_request)
-                        }
-                    })
+                    .wrap(auth)
                     .service(insert_tournament)
                     .service(insert_match)
                     .service(insert_player)
