@@ -3,6 +3,8 @@ use actix_web::{dev::ServiceRequest, Error};
 use actix_web_httpauth::extractors::bearer::BearerAuth;
 use chrono::Local;
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+use once_cell::sync::Lazy;
+use regex::Regex;
 use serde::Deserialize;
 use serde::Serialize;
 use sqlx::PgPool;
@@ -54,13 +56,19 @@ pub async fn authenticate_request(
     }
 }
 
+const PATTERN: &str = include_str!("../email_regex.txt");
+static EMAIL_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(PATTERN).expect("Regex is invalid"));
+
 // Authenticate an user and return a JWT token if the credentials are valid
 pub async fn login_user(
     storage: &PgPool,
     email: &str,
     password: &str,
 ) -> Result<String, ServerError> {
-    // TODO: CHECK EMAIL VALIDITY WITH REGEX HERE
+    // Is this really needed? Gets rid of unnecessary db call at least
+    if !EMAIL_REGEX.is_match(email) {
+        return Err(ServerError::InvalidEmail);
+    }
     if let Some(user_row) = storage.find_user(email).await {
         // check password
         let is_pw_correct = bcrypt::verify(&password, &user_row.password).map_err(|err| {
@@ -91,5 +99,15 @@ pub async fn login_user(
         Ok(token)
     } else {
         Err(ServerError::InvalidEmail)
+    }
+}
+
+pub async fn create_user(storage: &PgPool, email: &str, password: &str) -> Result<(), ServerError> {
+    if !EMAIL_REGEX.is_match(email) {
+        return Err(ServerError::InvalidEmail);
+    }
+
+    if password.len() < 8 {
+        ret
     }
 }
