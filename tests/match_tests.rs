@@ -4,7 +4,7 @@ use reqwest::{Response, StatusCode};
 use tournament_tracker_backend::match_operations::MatchInfo;
 use tournament_tracker_backend::stores::match_store::MatchResult;
 use tournament_tracker_backend::{
-    endpoints::PlayerMatchRegistrationRequest,
+    endpoints::PlayerMatchRegistrationPayload,
     match_operations::TournamentMatchList,
     stores::{
         match_store::Match, player_registration_store::PlayerMatchRegistration,
@@ -71,7 +71,7 @@ async fn insert_match(
 }
 
 async fn register_player(client: &TournamentTrackerClient, match_id: i64, player_id: i64) {
-    let player_registration = PlayerMatchRegistrationRequest {
+    let player_registration = PlayerMatchRegistrationPayload {
         player_id,
         registered_by: "Svante".to_string(),
     };
@@ -128,7 +128,7 @@ async fn should_fail_to_register_match_with_invalid_start_date() {
 async fn should_fail_to_register_to_missing_match() {
     let client = spawn_server().await;
 
-    let player_registration = PlayerMatchRegistrationRequest {
+    let player_registration = PlayerMatchRegistrationPayload {
         player_id: 0,
         registered_by: "Svante".to_string(),
     };
@@ -172,7 +172,7 @@ async fn should_not_register_invalid_player() {
     let match_id = insert_match(&client, tournament_id, player_one, player_two).await;
 
     // Try to register player not part of rooster
-    let player_registration = PlayerMatchRegistrationRequest {
+    let player_registration = PlayerMatchRegistrationPayload {
         player_id: 1337,
         registered_by: "Svante".to_string(),
     };
@@ -180,7 +180,7 @@ async fn should_not_register_invalid_player() {
     assert!(response.status().is_client_error());
 
     // Try to register player twice
-    let player_registration = PlayerMatchRegistrationRequest {
+    let player_registration = PlayerMatchRegistrationPayload {
         player_id: player_one,
         registered_by: "Svante".to_string(),
     };
@@ -188,7 +188,7 @@ async fn should_not_register_invalid_player() {
     assert!(response.status().is_success());
 
     // Second attempt should fail
-    let player_registration = PlayerMatchRegistrationRequest {
+    let player_registration = PlayerMatchRegistrationPayload {
         player_id: player_one,
         registered_by: "Svante".to_string(),
     };

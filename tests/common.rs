@@ -9,7 +9,7 @@ use tokio::runtime::Runtime;
 use tournament_tracker_backend::stores::match_store::MatchResult;
 use tournament_tracker_backend::{
     configuration::{get_configuration, DatabaseSettings},
-    endpoints::{CourtForm, PlayerMatchRegistrationRequest},
+    endpoints::{CourtForm, PlayerMatchRegistrationPayload},
     get_trace_subscriber, init_subscriber,
     stores::match_store::Match,
     stores::{player_store::Player, tournament_store::Tournament},
@@ -107,7 +107,7 @@ impl TournamentTrackerClient {
     pub async fn register_player(
         &self,
         match_id: i64,
-        player_registration_req: &PlayerMatchRegistrationRequest,
+        player_registration_req: &PlayerMatchRegistrationPayload,
     ) -> Response {
         self.client
             .post(&format!(

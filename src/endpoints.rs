@@ -1,3 +1,4 @@
+use crate::authentication::login_user;
 use crate::match_operations::finish_match;
 use crate::stores::match_store::MatchResult;
 use crate::{
@@ -11,7 +12,7 @@ use crate::{
     ServerError,
 };
 use actix_web::{
-    get, post, put,
+    get, post,
     web::Path,
     web::{Data, Form, Json},
     HttpResponse, Responder,
@@ -24,6 +25,31 @@ use sqlx::PgPool;
 pub async fn health_check() -> HttpResponse {
     HttpResponse::Ok().finish()
 }
+
+// Auth endpoints
+#[derive(Debug, Deserialize)]
+struct LoginPayload {
+    email: String,
+    password: String,
+}
+
+#[tracing::instrument(name = "User login", skip(db))]
+#[post("/login")]
+pub async fn login(
+    payload: Json<LoginPayload>,
+    db: Data<PgPool>,
+) -> Result<impl Responder, ServerError> {
+    if payload.email.is_empty() {
+        return Err(ServerError::InvalidEmail);
+    }
+    if payload.password.is_empty() {
+        return Err(ServerError::InvalidPassword);
+    }
+    let token = login_user(&db, &payload.email, &payload.password).await?;
+    Ok(HttpResponse::Ok().body(token).finish())
+}
+
+// create user endpoint must check email validity via regex and that the user doesn't already exist
 
 // Tournament endpoints
 #[tracing::instrument(name = "Insert tournament", skip(db))]
@@ -132,7 +158,7 @@ pub async fn finish_match_endpoint(
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct PlayerMatchRegistrationRequest {
+pub struct PlayerMatchRegistrationPayload {
     pub player_id: i64,
     pub registered_by: String,
 }
@@ -142,7 +168,7 @@ pub struct PlayerMatchRegistrationRequest {
 #[post("/matches/{match_id}/register/player")]
 pub async fn register_player(
     match_id: Path<i64>,
-    payload: Json<PlayerMatchRegistrationRequest>,
+    payload: Json<PlayerMatchRegistrationPayload>,
     storage: Data<PgPool>,
 ) -> Result<impl Responder, ServerError> {
     let match_registration =
