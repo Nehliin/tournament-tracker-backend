@@ -18,14 +18,14 @@ pub struct UserInfoRow {
 
 #[async_trait]
 pub trait UserStore {
-    async fn insert_user(&self, email: String, password: String) -> Result<Uuid, ServerError>;
+    async fn insert_user(&self, email: &str, password: &str) -> Result<Uuid, ServerError>;
     async fn find_user(&self, email: &str) -> Option<UserInfoRow>;
     async fn get_user(&self, id: Uuid) -> Option<UserInfoRow>;
 }
 
 #[async_trait]
 impl UserStore for PgPool {
-    async fn insert_user(&self, email: String, password: String) -> Result<Uuid, ServerError> {
+    async fn insert_user(&self, email: &str, password: &str) -> Result<Uuid, ServerError> {
         let id = Uuid::new_v4();
         let created_at = Local::now().naive_local();
         let hashed_password = hash(password, DEFAULT_COST).map_err(|err| {

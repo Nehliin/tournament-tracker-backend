@@ -52,6 +52,8 @@ pub enum ServerError {
     MatchNotFound,
     #[error("Match already started")]
     MatchAlreadyStarted,
+    #[error("User with email {0} already exists")]
+    AccountAlreadyExists(String),
     #[error("Invalid email")]
     InvalidEmail,
     #[error("Invalid password")]
@@ -83,9 +85,9 @@ impl ResponseError for ServerError {
                 http::StatusCode::INTERNAL_SERVER_ERROR
             }
             ServerError::InvalidToken => http::StatusCode::UNAUTHORIZED,
-            ServerError::MatchNotStarted | ServerError::MatchAlreadyCompleted => {
-                http::StatusCode::CONFLICT
-            }
+            ServerError::MatchNotStarted
+            | ServerError::AccountAlreadyExists(_)
+            | ServerError::MatchAlreadyCompleted => http::StatusCode::CONFLICT,
         }
     }
 }
@@ -131,6 +133,8 @@ pub fn run(listener: TcpListener, db_pool: PgPool) -> io::Result<Server> {
                     .service(add_court_to_tournament)
                     .service(finish_match_endpoint),
             )
+            .service(create_new_user)
+            .service(login)
             .service(get_tournaments)
             .service(health_check)
             .service(get_player)

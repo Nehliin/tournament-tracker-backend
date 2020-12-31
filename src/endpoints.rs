@@ -1,4 +1,4 @@
-use crate::authentication::login_user;
+use crate::authentication::{create_user, login_user};
 use crate::match_operations::finish_match;
 use crate::stores::match_store::MatchResult;
 use crate::{
@@ -20,6 +20,7 @@ use actix_web::{
 use chrono::Local;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use tracing::info;
 
 #[get("/health_check")]
 pub async fn health_check() -> HttpResponse {
@@ -28,15 +29,15 @@ pub async fn health_check() -> HttpResponse {
 
 // Auth endpoints
 #[derive(Debug, Deserialize)]
-struct LoginPayload {
+pub struct CreadentialsPayload {
     email: String,
     password: String,
 }
 
-#[tracing::instrument(name = "User login", skip(db))]
+#[tracing::instrument(name = "User login", skip(db, payload))]
 #[post("/login")]
 pub async fn login(
-    payload: Json<LoginPayload>,
+    payload: Json<CreadentialsPayload>,
     db: Data<PgPool>,
 ) -> Result<impl Responder, ServerError> {
     if payload.email.is_empty() {
@@ -45,11 +46,27 @@ pub async fn login(
     if payload.password.is_empty() {
         return Err(ServerError::InvalidPassword);
     }
+    info!("Attempting login for user: {}", payload.email);
     let token = login_user(&db, &payload.email, &payload.password).await?;
-    Ok(HttpResponse::Ok().body(token).finish())
+    Ok(HttpResponse::Ok().body(token))
 }
 
-// create user endpoint must check email validity via regex and that the user doesn't already exist
+#[tracing::instrument(name = "Create new user", skip(db, payload))]
+#[post("/user")]
+pub async fn create_new_user(
+    payload: Json<CreadentialsPayload>,
+    db: Data<PgPool>,
+) -> Result<impl Responder, ServerError> {
+    if payload.email.is_empty() {
+        return Err(ServerError::InvalidEmail);
+    }
+    if payload.password.is_empty() {
+        return Err(ServerError::InvalidPassword);
+    }
+    info!("Attempting user registration for email: {}", payload.email);
+    let _ = create_user(&db, &payload.email, &payload.password).await?;
+    Ok(HttpResponse::Ok())
+}
 
 // Tournament endpoints
 #[tracing::instrument(name = "Insert tournament", skip(db))]

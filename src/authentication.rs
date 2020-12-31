@@ -8,7 +8,7 @@ use regex::Regex;
 use serde::Deserialize;
 use serde::Serialize;
 use sqlx::PgPool;
-use tracing::{error, warn};
+use tracing::{error, info, warn};
 use uuid::Uuid;
 
 const TEMP_SECRET: &[u8] = &[0; 512];
@@ -108,6 +108,14 @@ pub async fn create_user(storage: &PgPool, email: &str, password: &str) -> Resul
     }
 
     if password.len() < 8 {
-        ret
+        return Err(ServerError::InvalidPassword);
     }
+
+    if storage.find_user(email).await.is_some() {
+        return Err(ServerError::AccountAlreadyExists(email.to_string()));
+    }
+
+    let id = storage.insert_user(email, password).await?;
+    info!("Created user: {} for email: {}", id, email);
+    Ok(())
 }
