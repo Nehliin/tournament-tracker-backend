@@ -319,6 +319,67 @@
       ]
     }
   },
+  "64fd1627ad649ad83fb32e501317e30223f606fd4b68210ce64fbaf7e970ad92": {
+    "query": "INSERT INTO users (id, email, password, created_at) VALUES ($1, $2, $3, $4) RETURNING id",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Uuid"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid",
+          "Text",
+          "Text",
+          "Timestamp"
+        ]
+      },
+      "nullable": [
+        false
+      ]
+    }
+  },
+  "843923b9a0257cf80f1dff554e7dc8fdfc05f489328e8376513124dfb42996e3": {
+    "query": "SELECT * FROM users WHERE id = $1",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "email",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "password",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "created_at",
+          "type_info": "Timestamp"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
   "929da725c935d95a4b85ea67fc4bb5bcb7023e261d2a490bc06354e13627e207": {
     "query": "INSERT INTO matches (tournament_id, player_one, player_two, class, start_time) \n                    VALUES ($1,$2,$3,$4,$5)\n                    RETURNING id",
     "describe": {
@@ -428,6 +489,44 @@
       ],
       "parameters": {
         "Left": []
+      },
+      "nullable": [
+        false,
+        false,
+        false,
+        false
+      ]
+    }
+  },
+  "f3f58600e971f1be6cbe206bba24f77769f54c6230e28f5b3dc719b869d9cb3f": {
+    "query": "SELECT * FROM users WHERE email = $1",
+    "describe": {
+      "columns": [
+        {
+          "ordinal": 0,
+          "name": "id",
+          "type_info": "Uuid"
+        },
+        {
+          "ordinal": 1,
+          "name": "email",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 2,
+          "name": "password",
+          "type_info": "Text"
+        },
+        {
+          "ordinal": 3,
+          "name": "created_at",
+          "type_info": "Timestamp"
+        }
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
       },
       "nullable": [
         false,
