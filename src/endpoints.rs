@@ -28,10 +28,10 @@ pub async fn health_check() -> HttpResponse {
 }
 
 // Auth endpoints
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct CreadentialsPayload {
-    email: String,
-    password: String,
+    pub email: String,
+    pub password: String,
 }
 
 #[tracing::instrument(name = "User login", skip(db, payload))]

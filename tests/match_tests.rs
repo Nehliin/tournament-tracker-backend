@@ -1,5 +1,5 @@
 use chrono::{Duration, Local};
-use common::{spawn_server, TournamentTrackerClient};
+use common::{spawn_server_and_authenticate, AuthenticatedClient};
 use reqwest::{Response, StatusCode};
 use tournament_tracker_backend::match_operations::MatchInfo;
 use tournament_tracker_backend::stores::match_store::MatchResult;
@@ -14,7 +14,7 @@ use tournament_tracker_backend::{
 
 mod common;
 
-async fn insert_tournament_and_players(client: &TournamentTrackerClient) -> (i32, i64, i64) {
+async fn insert_tournament_and_players(client: &AuthenticatedClient) -> (i32, i64, i64) {
     let start_date = Local::today().naive_local();
     let tournament = Tournament {
         id: 0, // doesn't matter
@@ -50,7 +50,7 @@ async fn insert_tournament_and_players(client: &TournamentTrackerClient) -> (i32
 }
 
 async fn insert_match(
-    client: &TournamentTrackerClient,
+    client: &AuthenticatedClient,
     tournament_id: i32,
     player_one: i64,
     player_two: i64,
@@ -70,7 +70,7 @@ async fn insert_match(
     response.text().await.unwrap().parse().unwrap()
 }
 
-async fn register_player(client: &TournamentTrackerClient, match_id: i64, player_id: i64) {
+async fn register_player(client: &AuthenticatedClient, match_id: i64, player_id: i64) {
     let player_registration = PlayerMatchRegistrationPayload {
         player_id,
         registered_by: "Svante".to_string(),
@@ -88,7 +88,7 @@ async fn register_player(client: &TournamentTrackerClient, match_id: i64, player
 
 #[actix_rt::test]
 async fn should_fail_to_register_match_with_invalid_rooster() {
-    let client = spawn_server().await;
+    let client = spawn_server_and_authenticate().await;
 
     let (tournament_id, player_one, _) = insert_tournament_and_players(&client).await;
 
@@ -107,7 +107,7 @@ async fn should_fail_to_register_match_with_invalid_rooster() {
 
 #[actix_rt::test]
 async fn should_fail_to_register_match_with_invalid_start_date() {
-    let client = spawn_server().await;
+    let client = spawn_server_and_authenticate().await;
 
     let (tournament_id, player_one, player_two) = insert_tournament_and_players(&client).await;
 
@@ -126,7 +126,7 @@ async fn should_fail_to_register_match_with_invalid_start_date() {
 
 #[actix_rt::test]
 async fn should_fail_to_register_to_missing_match() {
-    let client = spawn_server().await;
+    let client = spawn_server_and_authenticate().await;
 
     let player_registration = PlayerMatchRegistrationPayload {
         player_id: 0,
@@ -139,7 +139,7 @@ async fn should_fail_to_register_to_missing_match() {
 
 #[actix_rt::test]
 async fn should_register_valid_player_and_start_match() {
-    let client = spawn_server().await;
+    let client = spawn_server_and_authenticate().await;
 
     let (tournament_id, player_one, player_two) = insert_tournament_and_players(&client).await;
 
@@ -165,7 +165,7 @@ async fn should_register_valid_player_and_start_match() {
 
 #[actix_rt::test]
 async fn should_not_register_invalid_player() {
-    let client = spawn_server().await;
+    let client = spawn_server_and_authenticate().await;
 
     let (tournament_id, player_one, player_two) = insert_tournament_and_players(&client).await;
 
@@ -198,7 +198,7 @@ async fn should_not_register_invalid_player() {
 
 #[actix_rt::test]
 async fn should_assign_free_court_if_available() {
-    let client = spawn_server().await;
+    let client = spawn_server_and_authenticate().await;
 
     let (tournament_id, player_one, player_two) = insert_tournament_and_players(&client).await;
 
@@ -245,7 +245,7 @@ async fn should_assign_free_court_if_available() {
 
 #[actix_rt::test]
 async fn should_assign_court_when_match_is_finished() {
-    let client = spawn_server().await;
+    let client = spawn_server_and_authenticate().await;
 
     let (tournament_id, player_one, player_two) = insert_tournament_and_players(&client).await;
 
@@ -326,7 +326,7 @@ async fn should_assign_court_when_match_is_finished() {
 }
 
 async fn create_and_finish_match(
-    client: &TournamentTrackerClient,
+    client: &AuthenticatedClient,
     match_result: &MatchResult,
 ) -> Response {
     let (tournament_id, player_one, player_two) = insert_tournament_and_players(&client).await;
@@ -345,7 +345,7 @@ async fn create_and_finish_match(
 
 #[actix_rt::test]
 async fn should_not_allow_invalid_result() {
-    let client = spawn_server().await;
+    let client = spawn_server_and_authenticate().await;
     let response = create_and_finish_match(
         &client,
         &MatchResult {
@@ -359,7 +359,7 @@ async fn should_not_allow_invalid_result() {
 
 #[actix_rt::test]
 async fn should_not_allow_invalid_winner() {
-    let client = spawn_server().await;
+    let client = spawn_server_and_authenticate().await;
     let response = create_and_finish_match(
         &client,
         &MatchResult {

@@ -124,7 +124,7 @@ pub fn run(listener: TcpListener, db_pool: PgPool) -> io::Result<Server> {
             .wrap(TracingLogger)
             // authenticated scope
             .service(
-                web::scope("/")
+                web::scope("/authenticated")
                     .wrap(auth)
                     .service(insert_tournament)
                     .service(insert_match)
