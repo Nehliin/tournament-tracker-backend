@@ -11,7 +11,10 @@ async fn health_check_test() {
     let response = tt_client
         .unauthenticated_client
         .client
-        .get(&format!("{}/health_check", &tt_client.unauthenticated_client.server_addr))
+        .get(&format!(
+            "{}/health_check",
+            &tt_client.unauthenticated_client.server_addr
+        ))
         .send()
         .await
         .expect("Request failed");

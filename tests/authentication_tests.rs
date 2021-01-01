@@ -69,5 +69,4 @@ async fn should_not_allow_unauthenticated_requests_to_protected_endpoints() {
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
-
 // TODO: Add tests for token expiration + user deletion causing token invalidation

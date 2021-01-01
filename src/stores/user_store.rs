@@ -48,34 +48,26 @@ impl UserStore for PgPool {
     }
 
     async fn find_user(&self, email: &str) -> Option<UserInfoRow> {
-        sqlx::query_as!(
-            UserInfoRow,
-            "SELECT * FROM users WHERE email = $1",
-            email
-        )
-        .fetch_optional(self)
-        .await
-        .map_err(|err| {
-            error!("Find user query failed with error: {}", err);
-            err
-        })
-        .ok()
-        .flatten()
+        sqlx::query_as!(UserInfoRow, "SELECT * FROM users WHERE email = $1", email)
+            .fetch_optional(self)
+            .await
+            .map_err(|err| {
+                error!("Find user query failed with error: {}", err);
+                err
+            })
+            .ok()
+            .flatten()
     }
 
     async fn get_user(&self, id: Uuid) -> Option<UserInfoRow> {
-        sqlx::query_as!(
-            UserInfoRow,
-            "SELECT * FROM users WHERE id = $1",
-            id
-        )
-        .fetch_optional(self)
-        .await
-        .map_err(|err| {
-            error!("Failed to fetch user {}", err);
-            err
-        })
-        .ok()
-        .flatten()
+        sqlx::query_as!(UserInfoRow, "SELECT * FROM users WHERE id = $1", id)
+            .fetch_optional(self)
+            .await
+            .map_err(|err| {
+                error!("Failed to fetch user {}", err);
+                err
+            })
+            .ok()
+            .flatten()
     }
 }

@@ -13,9 +13,7 @@ use tournament_tracker_backend::{
     stores::match_store::Match,
     stores::{player_store::Player, tournament_store::Tournament},
 };
-use tournament_tracker_backend::{
-    endpoints::CredentialsPayload, stores::match_store::MatchResult,
-};
+use tournament_tracker_backend::{endpoints::CredentialsPayload, stores::match_store::MatchResult};
 use uuid::Uuid;
 
 pub struct UnauthenticatedClient {
@@ -90,7 +88,10 @@ pub fn finish_match(
     match_result: &MatchResult,
 ) -> RequestBuilder {
     client
-        .post(&format!("{}/authenticated/matches/{}/finish", server_addr, match_id))
+        .post(&format!(
+            "{}/authenticated/matches/{}/finish",
+            server_addr, match_id
+        ))
         .json(&match_result)
 }
 
@@ -225,19 +226,26 @@ impl AuthenticatedClient {
     }
 
     pub async fn insert_tournament(&self, tournament: &Tournament) -> Response {
-        insert_tournament(&self.unauthenticated_client.client, &self.unauthenticated_client.server_addr, tournament)
-            .header(AUTH_HEADER, self.auth_header_value())
-            .send()
-            .await
-            .expect("Request failed")
+        insert_tournament(
+            &self.unauthenticated_client.client,
+            &self.unauthenticated_client.server_addr,
+            tournament,
+        )
+        .header(AUTH_HEADER, self.auth_header_value())
+        .send()
+        .await
+        .expect("Request failed")
     }
 
     pub async fn get_tournaments(&self) -> Response {
-        get_tournaments(&self.unauthenticated_client.client, &self.unauthenticated_client.server_addr)
-            .header(AUTH_HEADER, self.auth_header_value())
-            .send()
-            .await
-            .expect("Request failed")
+        get_tournaments(
+            &self.unauthenticated_client.client,
+            &self.unauthenticated_client.server_addr,
+        )
+        .header(AUTH_HEADER, self.auth_header_value())
+        .send()
+        .await
+        .expect("Request failed")
     }
 
     pub async fn add_court_to_tournament(
@@ -258,35 +266,51 @@ impl AuthenticatedClient {
     }
 
     pub async fn get_tournaments_matches(&self, tournament_id: i32) -> Response {
-        get_tournaments_matches(&self.unauthenticated_client.client, &self.unauthenticated_client.server_addr, tournament_id)
-            .header(AUTH_HEADER, self.auth_header_value())
-            .send()
-            .await
-            .expect("Request failed")
+        get_tournaments_matches(
+            &self.unauthenticated_client.client,
+            &self.unauthenticated_client.server_addr,
+            tournament_id,
+        )
+        .header(AUTH_HEADER, self.auth_header_value())
+        .send()
+        .await
+        .expect("Request failed")
     }
 
     pub async fn insert_player(&self, player: &Player) -> Response {
-        insert_player(&self.unauthenticated_client.client, &self.unauthenticated_client.server_addr, player)
-            .header(AUTH_HEADER, self.auth_header_value())
-            .send()
-            .await
-            .expect("Request failed")
+        insert_player(
+            &self.unauthenticated_client.client,
+            &self.unauthenticated_client.server_addr,
+            player,
+        )
+        .header(AUTH_HEADER, self.auth_header_value())
+        .send()
+        .await
+        .expect("Request failed")
     }
 
     pub async fn get_player(&self, player_id: i64) -> Response {
-        get_player(&self.unauthenticated_client.client, &self.unauthenticated_client.server_addr, player_id)
-            .header(AUTH_HEADER, self.auth_header_value())
-            .send()
-            .await
-            .expect("Request failed")
+        get_player(
+            &self.unauthenticated_client.client,
+            &self.unauthenticated_client.server_addr,
+            player_id,
+        )
+        .header(AUTH_HEADER, self.auth_header_value())
+        .send()
+        .await
+        .expect("Request failed")
     }
 
     pub async fn insert_match(&self, match_data: &Match) -> Response {
-        insert_match(&self.unauthenticated_client.client, &self.unauthenticated_client.server_addr, match_data)
-            .header(AUTH_HEADER, self.auth_header_value())
-            .send()
-            .await
-            .expect("Request failed")
+        insert_match(
+            &self.unauthenticated_client.client,
+            &self.unauthenticated_client.server_addr,
+            match_data,
+        )
+        .header(AUTH_HEADER, self.auth_header_value())
+        .send()
+        .await
+        .expect("Request failed")
     }
 
     pub async fn finish_match(&self, match_id: i64, match_result: &MatchResult) -> Response {
