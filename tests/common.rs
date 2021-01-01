@@ -14,7 +14,7 @@ use tournament_tracker_backend::{
     stores::{player_store::Player, tournament_store::Tournament},
 };
 use tournament_tracker_backend::{
-    endpoints::CreadentialsPayload, stores::match_store::MatchResult,
+    endpoints::CredentialsPayload, stores::match_store::MatchResult,
 };
 use uuid::Uuid;
 
@@ -185,7 +185,7 @@ impl UnauthenticatedClient {
         .expect("Request failed")
     }
 
-    pub async fn create_user(&self, credentials: &CreadentialsPayload) -> Response {
+    pub async fn create_user(&self, credentials: &CredentialsPayload) -> Response {
         self.client
             .post(&format!("{}/user", &self.server_addr))
             .json(&credentials)
@@ -194,7 +194,7 @@ impl UnauthenticatedClient {
             .expect("Request failed")
     }
 
-    pub async fn login(&self, credentials: &CreadentialsPayload) -> Response {
+    pub async fn login(&self, credentials: &CredentialsPayload) -> Response {
         self.client
             .post(&format!("{}/login", &self.server_addr))
             .json(&credentials)
@@ -204,7 +204,7 @@ impl UnauthenticatedClient {
     }
 
     pub async fn new_authenticated_client(self) -> AuthenticatedClient {
-        let dummy_credentials = CreadentialsPayload {
+        let dummy_credentials = CredentialsPayload {
             email: "dummy@test.se".to_string(),
             password: "some-secure-password".to_string(),
         };

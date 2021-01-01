@@ -33,7 +33,7 @@ pub async fn health_check() -> HttpResponse {
 
 // Auth endpoints
 #[derive(Debug, Serialize, Deserialize)]
-pub struct CreadentialsPayload {
+pub struct CredentialsPayload {
     pub email: String,
     pub password: String,
 }
@@ -41,7 +41,7 @@ pub struct CreadentialsPayload {
 #[tracing::instrument(name = "User login", skip(db, payload))]
 #[post("/login")]
 pub async fn login(
-    payload: Json<CreadentialsPayload>,
+    payload: Json<CredentialsPayload>,
     db: Data<PgPool>,
 ) -> Result<impl Responder, ServerError> {
     if payload.email.is_empty() {
@@ -58,7 +58,7 @@ pub async fn login(
 #[tracing::instrument(name = "Create new user", skip(db, payload))]
 #[post("/user")]
 pub async fn create_new_user(
-    payload: Json<CreadentialsPayload>,
+    payload: Json<CredentialsPayload>,
     db: Data<PgPool>,
 ) -> Result<impl Responder, ServerError> {
     if payload.email.is_empty() {
