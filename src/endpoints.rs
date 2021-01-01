@@ -1,3 +1,7 @@
+// The endpoint macros are causing problems
+#![allow(clippy::suspicious_else_formatting)]
+#![allow(unused_braces)]
+
 use crate::authentication::{create_user, login_user};
 use crate::match_operations::finish_match;
 use crate::stores::match_store::MatchResult;
