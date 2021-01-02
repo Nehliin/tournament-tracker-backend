@@ -9,7 +9,7 @@ use tournament_tracker_backend::{
 };
 
 #[actix_rt::test]
-async fn should_not_allow_invalid_email() {
+async fn should_not_allow_invalid_email_or_password() {
     let client = spawn_server_and_authenticate().await.unauthenticated_client;
     let response = client
         .create_user(&CredentialsPayload {
@@ -18,11 +18,6 @@ async fn should_not_allow_invalid_email() {
         })
         .await;
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
-}
-
-#[actix_rt::test]
-async fn should_not_allow_short_password() {
-    let client = spawn_server_and_authenticate().await.unauthenticated_client;
     let response = client
         .create_user(&CredentialsPayload {
             email: "valid.email@google.com".into(),
