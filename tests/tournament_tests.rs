@@ -1,5 +1,5 @@
 use chrono::{Duration, Local};
-use common::spawn_server;
+use common::spawn_server_and_authenticate;
 use reqwest::StatusCode;
 use tournament_tracker_backend::stores::tournament_store::Tournament;
 
@@ -7,7 +7,7 @@ mod common;
 
 #[actix_rt::test]
 async fn insert_tournament_test() {
-    let client = spawn_server().await;
+    let client = spawn_server_and_authenticate().await;
 
     let start_date = Local::today().naive_local();
 
@@ -26,7 +26,7 @@ async fn insert_tournament_test() {
 
 #[actix_rt::test]
 async fn invalid_date_test() {
-    let client = spawn_server().await;
+    let client = spawn_server_and_authenticate().await;
 
     let start_date = Local::today().naive_local();
 
@@ -44,7 +44,7 @@ async fn invalid_date_test() {
 
 #[actix_rt::test]
 async fn get_tournament_test() {
-    let client = spawn_server().await;
+    let client = spawn_server_and_authenticate().await;
 
     let start_date = Local::today().naive_local();
 

@@ -1,3 +1,8 @@
+// The endpoint macros are causing problems
+#![allow(clippy::suspicious_else_formatting)]
+#![allow(unused_braces)]
+
+use crate::authentication::{create_user, login_user};
 use crate::match_operations::finish_match;
 use crate::stores::match_store::MatchResult;
 use crate::{
@@ -11,7 +16,7 @@ use crate::{
     ServerError,
 };
 use actix_web::{
-    get, post, put,
+    get, post,
     web::Path,
     web::{Data, Form, Json},
     HttpResponse, Responder,
@@ -19,10 +24,52 @@ use actix_web::{
 use chrono::Local;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use tracing::info;
 
 #[get("/health_check")]
 pub async fn health_check() -> HttpResponse {
     HttpResponse::Ok().finish()
+}
+
+// Auth endpoints
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CredentialsPayload {
+    pub email: String,
+    pub password: String,
+}
+
+#[tracing::instrument(name = "User login", skip(db, payload))]
+#[post("/login")]
+pub async fn login(
+    payload: Json<CredentialsPayload>,
+    db: Data<PgPool>,
+) -> Result<impl Responder, ServerError> {
+    if payload.email.is_empty() {
+        return Err(ServerError::InvalidEmail);
+    }
+    if payload.password.is_empty() {
+        return Err(ServerError::InvalidPassword);
+    }
+    info!("Attempting login for user: {}", payload.email);
+    let token = login_user(&db, &payload.email, &payload.password).await?;
+    Ok(HttpResponse::Ok().body(token))
+}
+
+#[tracing::instrument(name = "Create new user", skip(db, payload))]
+#[post("/user")]
+pub async fn create_new_user(
+    payload: Json<CredentialsPayload>,
+    db: Data<PgPool>,
+) -> Result<impl Responder, ServerError> {
+    if payload.email.is_empty() {
+        return Err(ServerError::InvalidEmail);
+    }
+    if payload.password.is_empty() {
+        return Err(ServerError::InvalidPassword);
+    }
+    info!("Attempting user registration for email: {}", payload.email);
+    let _ = create_user(&db, &payload.email, &payload.password).await?;
+    Ok(HttpResponse::Ok())
 }
 
 // Tournament endpoints
@@ -121,7 +168,7 @@ pub async fn insert_match(
 }
 
 #[tracing::instrument(name = "Finish match", skip(db))]
-#[put("/matches/{match_id}/finish")]
+#[post("/matches/{match_id}/finish")]
 pub async fn finish_match_endpoint(
     id: Path<i64>,
     result: Json<MatchResult>,
@@ -132,7 +179,7 @@ pub async fn finish_match_endpoint(
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct PlayerMatchRegistrationRequest {
+pub struct PlayerMatchRegistrationPayload {
     pub player_id: i64,
     pub registered_by: String,
 }
@@ -142,7 +189,7 @@ pub struct PlayerMatchRegistrationRequest {
 #[post("/matches/{match_id}/register/player")]
 pub async fn register_player(
     match_id: Path<i64>,
-    payload: Json<PlayerMatchRegistrationRequest>,
+    payload: Json<PlayerMatchRegistrationPayload>,
     storage: Data<PgPool>,
 ) -> Result<impl Responder, ServerError> {
     let match_registration =

@@ -1,7 +1,7 @@
 use crate::stores::court_store::pop_court_queue;
 use crate::stores::match_store::MatchResult;
 use crate::{
-    endpoints::PlayerMatchRegistrationRequest,
+    endpoints::PlayerMatchRegistrationPayload,
     stores::match_store::Match,
     stores::{
         court_store::CourtStore,
@@ -73,7 +73,7 @@ impl MatchInfo {
 pub async fn register_player_to_match(
     storage: &PgPool,
     match_id: i64,
-    mut request: PlayerMatchRegistrationRequest,
+    mut request: PlayerMatchRegistrationPayload,
 ) -> Result<PlayerMatchRegistration, ServerError> {
     let match_data = storage.get_match(match_id).await?;
 
@@ -234,11 +234,11 @@ pub async fn finish_match(
         None => return Err(ServerError::MatchNotFound),
     };
 
-    let _ = check_valid_match_result(&result, &match_data)?;
-
     if storage.get_match_result(match_id).await.is_some() {
         return Err(ServerError::MatchAlreadyCompleted);
     }
+
+    let _ = check_valid_match_result(&result, &match_data)?;
 
     if storage
         .get_match_court(match_data.tournament_id, match_id)
