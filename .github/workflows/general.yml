@@ -122,7 +122,7 @@ jobs:
           SQLX_OFFLINE: true
         uses: actions-rs/tarpaulin@v0.1
         with:
-          args: '-o Lcov --output-dir coverage --ignore-tests'
+          args: '-o Lcov --output-dir coverage --ignore-tests -- --test-threads 1'
       - name: Upload to coveralls
         uses: coverallsapp/github-action@master
         with:
