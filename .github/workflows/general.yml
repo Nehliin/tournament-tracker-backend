@@ -43,6 +43,7 @@ jobs:
           SQLX_OFFLINE: true
         with:
           command: test
+          args: -- --test-threads 2
 
   fmt:
     name: Rustfmt
