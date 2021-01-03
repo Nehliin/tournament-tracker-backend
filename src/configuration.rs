@@ -67,7 +67,7 @@ pub fn get_configuration() -> Result<Settings, config::ConfigError> {
     let env = std::env::var("ENVIROMENT").unwrap_or_else(|_| "local".into());
 
     // Layer on the environment-specific values.
-    settings.merge(config::File::from(config_dir.join(env.clone())).required(true))?;
+    settings.merge(config::File::from(config_dir.join(env)).required(true))?;
 
     // Allows ENV variables to override the yaml settings
     // ex APP_APPLICATION__PORT=1337
