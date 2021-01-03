@@ -1,5 +1,6 @@
 use sqlx::postgres::PgPoolOptions;
 use std::{io, net::TcpListener};
+use tournament_tracker_backend::authentication::set_keys;
 use tournament_tracker_backend::{
     configuration::get_configuration, get_trace_subscriber, init_subscriber, run,
 };
@@ -11,6 +12,7 @@ async fn main() -> io::Result<()> {
     init_subscriber(subscriber);
 
     let config = get_configuration().expect("Failed to read configuration");
+    set_keys(&config);
 
     let connection_pool = PgPoolOptions::new()
         .connect_timeout(std::time::Duration::from_secs(5))

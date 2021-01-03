@@ -2,15 +2,18 @@ use config::{Config, Environment, File};
 use serde::Deserialize;
 use serde_aux::field_attributes::deserialize_number_from_string;
 use sqlx::postgres::{PgConnectOptions, PgSslMode};
+use tracing::error;
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 pub struct ApplicationSettings {
     #[serde(deserialize_with = "deserialize_number_from_string")]
     pub port: u16,
     pub host: String,
+    // DO NOT PRINT THIS IN LOGS!!
+    pub private_key: String,
 }
-
-#[derive(Debug, Deserialize)]
+// DON'T DERIVE DEBUG TO AVOID ACCIDENTAL LOGGING!
+#[derive(Deserialize)]
 pub struct Settings {
     pub database: DatabaseSettings,
     pub application: ApplicationSettings,
@@ -70,5 +73,13 @@ pub fn get_configuration() -> Result<Settings, config::ConfigError> {
     // ex APP_APPLICATION__PORT=1337
     settings.merge(Environment::with_prefix("app").separator("__"))?;
 
-    settings.try_into()
+    let settings: Settings = settings.try_into()?;
+    if settings.application.private_key.is_empty() {
+        error!("Private key is not properly set!");
+        Err(config::ConfigError::Message(
+            "Private key isn't set".to_string(),
+        ))
+    } else {
+        Ok(settings)
+    }
 }

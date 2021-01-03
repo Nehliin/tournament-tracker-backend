@@ -6,6 +6,7 @@ use reqwest::{Client, RequestBuilder, Response};
 use sqlx::{Connection, Executor};
 use sqlx::{PgConnection, PgPool};
 use tokio::runtime::Runtime;
+use tournament_tracker_backend::authentication::set_keys;
 use tournament_tracker_backend::{
     configuration::{get_configuration, DatabaseSettings},
     endpoints::{CourtForm, PlayerMatchRegistrationPayload},
@@ -346,13 +347,19 @@ impl AuthenticatedClient {
 
 lazy_static::lazy_static! {
     static ref TRACING: () = {
-        let subscriber = get_trace_subscriber("Test server".into(), "debug".into(), || std::io::stdout());
+        let subscriber = get_trace_subscriber("Test server".into(), "debug".into(), std::io::stdout);
         init_subscriber(subscriber);
+    };
+
+    static ref PRIVATE_KEYS: () = {
+        let config = get_configuration().expect("Failed to read config");
+        set_keys(&config);
     };
 }
 
 pub async fn spawn_server_and_authenticate() -> AuthenticatedClient {
     lazy_static::initialize(&TRACING);
+    lazy_static::initialize(&PRIVATE_KEYS);
 
     let listener = TcpListener::bind("127.0.0.1:0").expect("Failed to bind address");
     let port = listener.local_addr().unwrap().port();
