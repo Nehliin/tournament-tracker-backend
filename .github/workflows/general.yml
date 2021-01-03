@@ -39,7 +39,8 @@ jobs:
       #- name: Check sqlx-data.json metadata file
       #  run: cargo sqlx prepare --check -- --bin app
       - uses: actions-rs/cargo@v1
-        env: 
+        env:
+          APP_APPLICATION__PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }} 
           SQLX_OFFLINE: true
         with:
           command: test
@@ -119,6 +120,7 @@ jobs:
           override: true
       - name: Run cargo-tarpaulin
         env:
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }} 
           SQLX_OFFLINE: true
         uses: actions-rs/tarpaulin@v0.1
         with:

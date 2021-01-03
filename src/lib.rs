@@ -13,7 +13,7 @@ use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_log::LogTracer;
 use tracing_subscriber::{fmt::MakeWriter, prelude::*, EnvFilter, Registry};
 
-mod authentication;
+pub mod authentication;
 pub mod configuration;
 pub mod endpoints;
 pub mod match_operations;
