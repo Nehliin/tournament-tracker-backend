@@ -120,7 +120,7 @@ jobs:
           override: true
       - name: Run cargo-tarpaulin
         env:
-          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }} 
+          APP_APPLICATION__PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
           SQLX_OFFLINE: true
         uses: actions-rs/tarpaulin@v0.1
         with:
