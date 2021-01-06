@@ -58,10 +58,12 @@ pub enum ServerError {
     InvalidEmail,
     #[error("Invalid password")]
     InvalidPassword,
-    #[error("Invalid auth token")]
-    InvalidToken,
+    #[error("Invalid auth token: {0}")]
+    InvalidToken(String),
     #[error("Login failed")]
     LoginFailed,
+    #[error("User not found")]
+    UserNotFound,
     #[error("Internal Database error")]
     InternalDataBaseError(#[from] sqlx::Error),
 }
@@ -80,11 +82,13 @@ impl ResponseError for ServerError {
             | ServerError::InvalidPassword
             | ServerError::InvalidEmail
             | ServerError::PlayerAlreadyReigstered => http::StatusCode::BAD_REQUEST,
-            ServerError::MatchNotFound | ServerError::PlayerNotFound => http::StatusCode::NOT_FOUND,
+            ServerError::MatchNotFound
+            | ServerError::UserNotFound
+            | ServerError::PlayerNotFound => http::StatusCode::NOT_FOUND,
             ServerError::InternalDataBaseError(_) | ServerError::LoginFailed => {
                 http::StatusCode::INTERNAL_SERVER_ERROR
             }
-            ServerError::InvalidToken => http::StatusCode::UNAUTHORIZED,
+            ServerError::InvalidToken(_) => http::StatusCode::UNAUTHORIZED,
             ServerError::MatchNotStarted
             | ServerError::AccountAlreadyExists(_)
             | ServerError::MatchAlreadyCompleted => http::StatusCode::CONFLICT,
@@ -131,7 +135,8 @@ pub fn run(listener: TcpListener, db_pool: PgPool) -> io::Result<Server> {
                     .service(insert_player)
                     .service(register_player)
                     .service(add_court_to_tournament)
-                    .service(finish_match_endpoint),
+                    .service(finish_match_endpoint)
+                    .service(delete_user),
             )
             .service(create_new_user)
             .service(login)

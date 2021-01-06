@@ -205,13 +205,17 @@ impl UnauthenticatedClient {
             .expect("Request failed")
     }
 
-    pub async fn new_authenticated_client(self) -> AuthenticatedClient {
+    pub async fn new_authenticated_user_client(self) -> AuthenticatedClient {
         let dummy_credentials = CredentialsPayload {
             email: "dummy@test.se".to_string(),
             password: "some-secure-password".to_string(),
         };
         self.create_user(&dummy_credentials).await;
-        let token = self.login(&dummy_credentials).await.text().await.unwrap();
+        self.authenticate(&dummy_credentials).await
+    }
+
+    pub async fn authenticate(self, credentials: &CredentialsPayload) -> AuthenticatedClient {
+        let token = self.login(&credentials).await.text().await.unwrap();
         AuthenticatedClient {
             unauthenticated_client: self,
             token,
@@ -343,11 +347,24 @@ impl AuthenticatedClient {
         .await
         .expect("Request failed")
     }
+
+    pub async fn delete_user(&self) -> Response {
+        self.unauthenticated_client
+            .client
+            .delete(&format!(
+                "{}/authenticated/user",
+                &self.unauthenticated_client.server_addr
+            ))
+            .header(AUTH_HEADER, self.auth_header_value())
+            .send()
+            .await
+            .expect("Request failed")
+    }
 }
 
 lazy_static::lazy_static! {
     static ref TRACING: () = {
-        let subscriber = get_trace_subscriber("Test server".into(), "debug".into(), std::io::stdout);
+        let subscriber = get_trace_subscriber("Test server".into(), "debug,sqlx=warn".into(), std::io::stdout);
         init_subscriber(subscriber);
     };
 
@@ -383,7 +400,7 @@ pub async fn spawn_server_and_authenticate() -> AuthenticatedClient {
         server_addr: format!("http://127.0.0.1:{}", port),
         client: reqwest::Client::new(),
     }
-    .new_authenticated_client()
+    .new_authenticated_user_client()
     .await
 }
 

@@ -299,6 +299,18 @@
       "nullable": []
     }
   },
+  "50293c2e54af11d4c2a553e29b671cef087a159c6ee7182d8ca929ecb748f3b7": {
+    "query": "DELETE FROM users WHERE id = $1",
+    "describe": {
+      "columns": [],
+      "parameters": {
+        "Left": [
+          "Uuid"
+        ]
+      },
+      "nullable": []
+    }
+  },
   "6229b3a4b6e8fb743ac4a446cb4b16609c0b7fdd983837af0c963ee760680237": {
     "query": "SELECT match_id FROM court_queue WHERE tournament_id = $1 ORDER BY place_in_queue ASC LIMIT 100",
     "describe": {

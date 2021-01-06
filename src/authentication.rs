@@ -1,17 +1,22 @@
 use crate::configuration::Settings;
 use crate::{stores::user_store::UserStore, ServerError};
-use actix_web::{dev::ServiceRequest, Error};
+use actix_web::dev::{Payload, PayloadStream};
+use actix_web::{dev::ServiceRequest, Error, FromRequest, HttpRequest};
 use actix_web_httpauth::extractors::bearer::BearerAuth;
 use chrono::Local;
+use futures::future::{err, ready};
+use futures::prelude::future::Ready;
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use once_cell::sync::{Lazy, OnceCell};
 use regex::Regex;
 use serde::Deserialize;
 use serde::Serialize;
 use sqlx::PgPool;
-use tracing::{error, info, warn};
+use tracing::{error, warn};
 use uuid::Uuid;
 
+const AUTH_HEADER: &str = "Authorization";
+const HEADER_PREFIX: &str = "Bearer ";
 const THREE_DAYS_SECONDS: usize = 60 * 60 * 24 * 3;
 const PATTERN: &str = include_str!("../email_regex.txt");
 static DECODING_KEY: OnceCell<DecodingKey> = OnceCell::new();
@@ -25,6 +30,40 @@ struct Claims {
     sub: String,
 }
 
+#[derive(Debug)]
+pub struct UserInfo {
+    pub id: Uuid,
+}
+
+impl FromRequest for UserInfo {
+    type Error = ServerError;
+    type Future = Ready<Result<Self, Self::Error>>;
+    type Config = ();
+
+    fn from_request(req: &HttpRequest, _payload: &mut Payload<PayloadStream>) -> Self::Future {
+        if let Some(auth_header) = req.headers().get(AUTH_HEADER) {
+            match auth_header.to_str() {
+                Ok(header_str) => {
+                    if let Some(token) = header_str.strip_prefix(HEADER_PREFIX) {
+                        ready(decode_token(token))
+                    } else {
+                        err(ServerError::InvalidToken(
+                            "Missing Bearer prefix".to_string(),
+                        ))
+                    }
+                }
+                Err(_) => err(ServerError::InvalidToken(
+                    "Invalid header encoding".to_string(),
+                )),
+            }
+        } else {
+            err(ServerError::InvalidToken(
+                "Missing Authorization header".to_string(),
+            ))
+        }
+    }
+}
+
 pub fn set_keys(config: &Settings) {
     let key = &config.application.private_key;
     assert!(48 <= key.len(), "Private key is too short");
@@ -36,13 +75,7 @@ pub fn set_keys(config: &Settings) {
         .expect("Failed to set encoding key");
 }
 
-// Authenticate the request given an auth token
-pub async fn authenticate_request(
-    pool: PgPool,
-    req: ServiceRequest,
-    credentials: BearerAuth,
-) -> Result<ServiceRequest, Error> {
-    let token = credentials.token();
+fn decode_token(token: &str) -> Result<UserInfo, ServerError> {
     let validation = Validation {
         leeway: 3,
         ..Validation::default()
@@ -55,7 +88,7 @@ pub async fn authenticate_request(
     )
     .map_err(|err| {
         warn!("Token decoding error: {}", err);
-        ServerError::InvalidToken
+        ServerError::InvalidToken("Invalid token".to_string())
     })?;
 
     let uuid = Uuid::parse_str(&decoded_token.claims.sub).map_err(|err| {
@@ -63,13 +96,23 @@ pub async fn authenticate_request(
             "invalid uuid string ({}), error: {}",
             &decoded_token.claims.sub, err
         );
-        ServerError::InvalidToken
+        ServerError::InvalidToken("Invalid token content".to_string())
     })?;
+    Ok(UserInfo { id: uuid })
+}
 
+// Authenticate the request given an auth token
+pub async fn authenticate_request(
+    pool: PgPool,
+    req: ServiceRequest,
+    credentials: BearerAuth,
+) -> Result<ServiceRequest, Error> {
+    let token = credentials.token();
+    let uuid = decode_token(token)?.id;
     if pool.get_user(uuid).await.is_some() {
         Ok(req)
     } else {
-        Err(ServerError::InvalidToken.into())
+        Err(ServerError::InvalidToken("User no longer exists".to_string()).into())
     }
 }
 
@@ -116,7 +159,11 @@ pub async fn login_user(
     }
 }
 
-pub async fn create_user(storage: &PgPool, email: &str, password: &str) -> Result<(), ServerError> {
+pub async fn create_user(
+    storage: &PgPool,
+    email: &str,
+    password: &str,
+) -> Result<Uuid, ServerError> {
     if !EMAIL_REGEX.is_match(email) {
         return Err(ServerError::InvalidEmail);
     }
@@ -128,8 +175,6 @@ pub async fn create_user(storage: &PgPool, email: &str, password: &str) -> Resul
     if storage.find_user(email).await.is_some() {
         return Err(ServerError::AccountAlreadyExists(email.to_string()));
     }
-
     let id = storage.insert_user(email, password).await?;
-    info!("Created user: {} for email: {}", id, email);
-    Ok(())
+    Ok(id)
 }

@@ -64,4 +64,35 @@ async fn should_not_allow_unauthenticated_requests_to_protected_endpoints() {
     assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
-// TODO: Add tests for token expiration + user deletion causing token invalidation
+#[actix_rt::test]
+async fn should_block_deleted_users() {
+    let client = spawn_server_and_authenticate().await;
+    let response = client
+        .insert_tournament(&Tournament {
+            id: 0,
+            name: "Dummy".to_string(),
+            start_date: Local::today().naive_local(),
+            end_date: Local::today().naive_local(),
+        })
+        .await;
+    // allowed
+    assert_eq!(response.status(), StatusCode::OK);
+    let response = client.delete_user().await;
+    assert_eq!(response.status(), StatusCode::OK);
+    let response = client
+        .insert_tournament(&Tournament {
+            id: 1,
+            name: "Dummy 2".to_string(),
+            start_date: Local::today().naive_local(),
+            end_date: Local::today().naive_local(),
+        })
+        .await;
+    // token no longer valid because the user is deleted
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    assert_eq!(
+        response.text().await.unwrap(),
+        "Invalid auth token: User no longer exists".to_string()
+    );
+}
+
+// TODO: Add tests for token expiration
