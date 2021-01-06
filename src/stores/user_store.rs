@@ -21,6 +21,7 @@ pub trait UserStore {
     async fn insert_user(&self, email: &str, password: &str) -> Result<Uuid, ServerError>;
     async fn find_user(&self, email: &str) -> Option<UserInfoRow>;
     async fn get_user(&self, id: Uuid) -> Option<UserInfoRow>;
+    async fn delete_user(&self, id: Uuid) -> Result<(), ServerError>;
 }
 
 #[async_trait]
@@ -69,5 +70,16 @@ impl UserStore for PgPool {
             })
             .ok()
             .flatten()
+    }
+
+    async fn delete_user(&self, id: Uuid) -> Result<(), ServerError> {
+        match sqlx::query!("DELETE FROM users WHERE id = $1", id)
+            .execute(self)
+            .await
+        {
+            Ok(_) => Ok(()),
+            Err(sqlx::Error::RowNotFound) => Err(ServerError::UserNotFound),
+            Err(err) => Err(err.into()),
+        }
     }
 }
