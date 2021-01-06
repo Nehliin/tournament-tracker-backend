@@ -2,9 +2,10 @@
 #![allow(clippy::suspicious_else_formatting)]
 #![allow(unused_braces)]
 
-use crate::authentication::{create_user, login_user};
+use crate::authentication::{create_user, login_user, UserInfo};
 use crate::match_operations::finish_match;
 use crate::stores::match_store::MatchResult;
+use crate::stores::user_store::UserStore;
 use crate::{
     match_operations::register_player_to_match,
     stores::{
@@ -16,7 +17,7 @@ use crate::{
     ServerError,
 };
 use actix_web::{
-    get, post,
+    delete, get, post,
     web::Path,
     web::{Data, Form, Json},
     HttpResponse, Responder,
@@ -68,7 +69,18 @@ pub async fn create_new_user(
         return Err(ServerError::InvalidPassword);
     }
     info!("Attempting user registration for email: {}", payload.email);
-    let _ = create_user(&db, &payload.email, &payload.password).await?;
+    let id = create_user(&db, &payload.email, &payload.password).await?;
+    info!("Created user: {} for email: {}", id, &payload.email);
+    Ok(HttpResponse::Ok())
+}
+
+#[tracing::instrument(name = "Delete user", skip(db))]
+#[delete("/user")]
+pub async fn delete_user(
+    user_info: UserInfo,
+    db: Data<PgPool>,
+) -> Result<impl Responder, ServerError> {
+    db.delete_user(user_info.id).await?;
     Ok(HttpResponse::Ok())
 }
 
